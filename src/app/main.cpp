@@ -143,7 +143,7 @@ int run()
     requireSDL(SDL_Vulkan_LoadLibrary(nullptr), "Load the Vulkan driver");
     const Loader loader{};
     const std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window{
-        SDL_CreateWindow("CalibGuide", 960, 540,
+        SDL_CreateWindow("EyeCal", 960, 540,
                          SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_FULLSCREEN),
         SDL_DestroyWindow
     };
@@ -263,7 +263,7 @@ int main(int, char**)
         return run();
     } catch (const std::exception& error) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.what());
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CalibGuide", error.what(), nullptr);
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "EyeCal", error.what(), nullptr);
         return 1;
     }
 }

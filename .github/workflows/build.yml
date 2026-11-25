@@ -1,4 +1,4 @@
-name: Build CalibGuide
+name: Build EyeCal
 
 on:
   pull_request:
@@ -32,8 +32,8 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
       - uses: actions/upload-artifact@v4
         with:
-          name: CalibGuide-Windows-x64
-          path: build/Release/CalibGuide.exe
+          name: EyeCal-Windows-x64
+          path: build/Release/EyeCal.exe
           if-no-files-found: error
 
   linux:
