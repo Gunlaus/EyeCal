@@ -1,0 +1,13 @@
+#pragma once
+
+#include <string_view>
+
+namespace calib::ui {
+inline constexpr std::string_view licenseText = R"LICENSE(IBM Plex Mono
+@font_license@
+SDL
+@sdl_license@
+volk
+@volk_license@
+)LICENSE";
+} // namespace calib::ui
