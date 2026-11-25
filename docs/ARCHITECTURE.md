@@ -40,7 +40,7 @@ Only a paired, exclusive observation can produce wording about likely truncation
 
 The guide draws button rectangles and produces their hit map in the same layout pass. The input layer uses the map from the last frame accepted by Vulkan presentation, clearing it on screen, modal and geometry changes. SDL window coordinates are converted to framebuffer pixels on each pointer event. A click activates the same enabled target it pressed. Tab and Shift+Tab cycle through enabled targets. Arrow and number keys keep their direct actions, and Enter advances the guide when no button has Tab focus.
 
-Buttons are placed in the reserved UI bands or on the menu, with a minimum height of six percent of the framebuffer and additional height for larger text. At small resolutions, shortcut text is dropped first. If the remaining layout cannot fit, the app asks the user to reduce the text size and leaves the pattern area clear.
+Buttons are placed in the reserved UI bands or on the menu, with a minimum height of six percent of the framebuffer and additional height for larger text. At small resolutions, shortcut text is dropped first and the header prioritizes the title, code labels and core instruction. If the remaining layout cannot fit, the app asks the user to reduce the text size and leaves the pattern area clear.
 
 The cursor uses a steady-clock deadline two seconds after the latest movement. The menu and the screen with the `summary` ID pin it visible. SDL focus and cursor handling stay in the app layer. A CPU-only divider component tracks an axis, a normalized split and the pointer's grab offset. It constrains both panes to their minimum size. The banding comparison can use it when that screen is added.
 
@@ -53,3 +53,9 @@ The dark chrome limits how much the UI contributes to average picture level. Usi
 ## M3 calibration screens
 
 The setup stores display category and panel type as session choices. The per-display hint is selected from the English locale. Gamma defaults to sRGB for monitors, BT.1886 for TVs, and 2.2 for projectors. A manual gamma selection overrides the default. Click a setting or focus it with Tab and press Enter to cycle it. Each test and its intentionally wrong thumbnail use the same procedural shader and quantization path. The sharpness screen's separate scanout-edge markers are drawn in the outer margins.
+
+## M4 banding diagnostic
+
+The four screens share step 7 of the current guide and store independent answers. The split is an input widget over a single procedural ramp. Its visible handle stays in the gutter while the shader switches quantizers at the split column. Shadow and mid-grey ramps use the same transfer function. The motion toggle advances only the shader phase.
+
+The probe requests 10-bit only on 6c. The renderer takes the existing swapchain teardown path, tries the surface-advertised packed 10-bit SDR UNORM pair, and falls back to 8-bit for an unavailable format. F1 reads the resulting actual format and exclusive flag. Compare results are based on two successful presentations of the same-size ramp on the same output. Fullscreen changes, output changes and failed presentation discard the evidence. Local tests exercise repeated comparison-state resets. Repeated driver-level 8/10-bit switches need hardware checks.

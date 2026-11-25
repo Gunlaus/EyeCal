@@ -30,7 +30,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ENGLISH_LOCALE
 file(READ "${ENGLISH_LOCALE}" english_json)
 configure_file(cmake/locale.hpp.in "${GENERATED_DIR}/locale.hpp" @ONLY)
 
-add_library(eyecal_core STATIC src/guide/guide.cpp src/patterns/quantize.cpp src/ui/interaction.cpp)
+add_library(eyecal_core STATIC src/guide/guide.cpp src/patterns/quantize.cpp src/patterns/banding.cpp src/ui/interaction.cpp)
 target_include_directories(eyecal_core PUBLIC src PRIVATE assets/blue-noise)
 target_link_libraries(eyecal_core PRIVATE nlohmann_json::nlohmann_json)
 if(MSVC)

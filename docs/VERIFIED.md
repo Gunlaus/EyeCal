@@ -44,3 +44,9 @@ For swapchain teardown on the baseline Vulkan path, M1 uses device idle, the con
 **UNVERIFIED on device.** EyeCal's dark UI lowers its own encoded background values. Whether a given OLED, projector or TV changes brightness during screen transitions depends on the display and settings. Check for visible shifts on a real display. [On-device checklist](ON_DEVICE_CHECKLIST.md#visual-chrome)
 
 **VERIFIED signal conventions.** Microsoft defines full-range 8-bit code values as 0–255 and conventional limited range as 16–235. EyeCal draws exact RGB code values into its 8-bit UNORM attachment. Actual device range, panel scaling and visibility of individual steps remain unverified on device. [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange)
+
+## 10-bit probe
+
+**VERIFIED API semantics.** EyeCal asks Vulkan for supported surface format and colour-space pairs and accepts only the documented 8-bit UNORM formats or an advertised packed 10-bit UNORM format paired with the SDR colour space. The 10-bit format describes the swapchain attachment. [Vulkan surface formats](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormatsKHR.html) · [Vulkan swapchain create info](https://docs.vulkan.org/refpages/latest/refpages/source/VkSwapchainCreateInfoKHR.html)
+
+**UNVERIFIED on device.** Effective 10-bit precision in borderless Vulkan, propagation through a specific exclusive presentation path, hardware stability under repeated format changes, and interpretation of moving grain or flicker require hardware checks. The probe labels a nonexclusive comparison inconclusive. Exclusive mode permits a qualified likely cause when the comparable 10-bit pass shows visible banding with no improvement. [Microsoft Advanced Color and historical DWM limit](https://learn.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range)

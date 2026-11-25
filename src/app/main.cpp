@@ -182,7 +182,7 @@ int run()
 
     while (running) {
         SDL_Event event;
-        if (SDL_WaitEventTimeout(&event, input.waitTimeout(animatingChrome ? 16 : redraw ? 35 : 200, Clock::now()))) {
+        if (SDL_WaitEventTimeout(&event, input.waitTimeout((animatingChrome || (guide.movingPattern() && !licenses.shown())) ? 16 : redraw ? 35 : 200, Clock::now()))) {
             do {
                 switch (event.type) {
                 case SDL_EVENT_QUIT:
@@ -199,7 +199,6 @@ int run()
                 case SDL_EVENT_WINDOW_FOCUS_LOST:
                     input.leave();
                     [[fallthrough]];
-                case SDL_EVENT_WINDOW_EXPOSED:
                 case SDL_EVENT_WINDOW_RESTORED:
                 case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
                 case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
@@ -208,6 +207,9 @@ int run()
                 case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
                 case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
                 case SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED:
+                    guide.resetProbe();
+                    [[fallthrough]];
+                case SDL_EVENT_WINDOW_EXPOSED:
                     input.invalidateTargets();
                     renderer.invalidate();
                     nextColorCheck = Clock::now();
@@ -234,6 +236,7 @@ int run()
                         redraw = true;
                         break;
                     case SDLK_F11:
+                        guide.resetProbe();
                         input.invalidateTargets();
                         renderer.dropSwapchain();
                         notice = {};
@@ -272,6 +275,7 @@ int run()
             const auto current = calib::platform::outputColor(window.get());
             redraw = redraw || current != outputColor;
             if (current != outputColor) {
+                guide.resetProbe();
                 input.invalidateTargets();
             }
             outputColor = current;
@@ -293,12 +297,31 @@ int run()
         const float motion = motionAllowed ? (1.0f - t) * (1.0f - t) * (1.0f - t) : 0.0f;
         redraw = redraw || animatingChrome || (motionAllowed && t < 1.0f);
         animatingChrome = motionAllowed && t < 1.0f;
-        if (running && redraw) {
+        const bool moving = guide.movingPattern() && !licenses.shown();
+        const float patternPhase = moving ? static_cast<float>(std::fmod(
+            std::chrono::duration<double>(now.time_since_epoch()).count(), 16.0) / 16.0) : 0.0f;
+        if (running && (redraw || moving)) {
             const bool focused = (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
-            redraw = !renderer.draw({guide, input.pointer(), input.pointerVisible(), motion, diagnostics,
-                                     exclusiveMode, focused, outputColor, notice, licenses.page()},
-                                    input.targets());
-            if (!redraw || !focused || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED)) {
+            const bool presented = renderer.draw({guide, input.pointer(), input.pointerVisible(),
+                                                  motion, patternPhase, diagnostics, exclusiveMode,
+                                                  focused, outputColor, notice, licenses.page()},
+                                                 input.targets());
+            redraw = !presented;
+            if (!presented) {
+                guide.resetProbe();
+            } else if (guide.screen().pattern == calib::guide::Pattern::bandingDepth &&
+                       !guide.menuOpen() && !licenses.shown() && focused &&
+                       (outputColor != calib::platform::OutputColor::hdr || !renderer.supportsTenBit())) {
+                const auto display = SDL_GetDisplayForWindow(window.get());
+                for (const auto& target : input.targets()) {
+                    if (target.action.command == calib::ui::Command::probeRegion && display != 0) {
+                        redraw = guide.probe().observe(renderer.supportsTenBit(), renderer.activeTenBit(),
+                            {display, target.bounds.width, target.bounds.height, renderer.exclusiveGranted()});
+                        break;
+                    }
+                }
+            }
+            if (presented || !focused || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED)) {
                 settlingSince.reset();
             } else if (!settlingSince) {
                 settlingSince = now;
