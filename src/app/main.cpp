@@ -1,3 +1,4 @@
+#include "app/guide_input.hpp"
 #include "platform/platform.hpp"
 #include "vk/renderer.hpp"
 #include "licenses.hpp"
@@ -138,23 +139,6 @@ private:
     bool shown_ = false;
 };
 
-std::optional<calib::guide::Input> guideInput(SDL_Keycode key)
-{
-    using calib::guide::Input;
-    switch (key) {
-    case SDLK_LEFT: return Input::previous;
-    case SDLK_RIGHT: return Input::next;
-    case SDLK_UP: return Input::up;
-    case SDLK_DOWN: return Input::down;
-    case SDLK_RETURN:
-    case SDLK_KP_ENTER: return Input::confirm;
-    case SDLK_ESCAPE: return Input::menu;
-    case SDLK_D: return Input::dither;
-    case SDLK_F3: return Input::textSize;
-    default: return std::nullopt;
-    }
-}
-
 int run()
 {
     const auto content = calib::guide::loadContent(calib::guide::englishJson);
@@ -173,6 +157,7 @@ int run()
 
     calib::vk::Renderer renderer;
     renderer.initialize(window.get());
+    calib::app::GuideInput input(window.get(), guide);
     LicenseView licenses;
     bool diagnostics = false;
     bool exclusiveMode = false;
@@ -185,23 +170,33 @@ int run()
 
     while (running) {
         SDL_Event event;
-        if (SDL_WaitEventTimeout(&event, redraw ? 35 : 200)) {
+        if (SDL_WaitEventTimeout(&event, input.waitTimeout(redraw ? 35 : 200, Clock::now()))) {
             do {
                 switch (event.type) {
                 case SDL_EVENT_QUIT:
                 case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                     running = false;
                     break;
+                case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                    input.leave();
+                    redraw = true;
+                    break;
+                case SDL_EVENT_WINDOW_MOUSE_ENTER:
+                    redraw = true;
+                    break;
+                case SDL_EVENT_WINDOW_FOCUS_LOST:
+                    input.leave();
+                    [[fallthrough]];
                 case SDL_EVENT_WINDOW_EXPOSED:
                 case SDL_EVENT_WINDOW_RESTORED:
                 case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
                 case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
                 case SDL_EVENT_WINDOW_FOCUS_GAINED:
-                case SDL_EVENT_WINDOW_FOCUS_LOST:
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
                 case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
                 case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
                 case SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED:
+                    input.invalidateTargets();
                     renderer.invalidate();
                     nextColorCheck = Clock::now();
                     redraw = true;
@@ -212,10 +207,12 @@ int run()
                     }
                     switch (event.key.key) {
                     case SDLK_F1:
+                        input.invalidateTargets();
                         diagnostics = !diagnostics;
                         redraw = true;
                         break;
                     case SDLK_F2:
+                        input.invalidateTargets();
                         licenses.toggle();
                         redraw = true;
                         break;
@@ -225,6 +222,7 @@ int run()
                         redraw = true;
                         break;
                     case SDLK_F11:
+                        input.invalidateTargets();
                         renderer.dropSwapchain();
                         notice = {};
                         if (!exclusiveMode && setExclusiveDisplayMode(window.get())) {
@@ -244,31 +242,34 @@ int run()
                             licenses.toggle();
                             redraw = true;
                         } else if (!licenses.shown()) {
-                            if (const auto input = guideInput(event.key.key)) {
-                                running = !guide.handle(*input);
-                                redraw = true;
-                            }
+                            redraw = input.key(event.key, running) || redraw;
                         }
                         break;
                     }
                     break;
                 default:
+                    redraw = input.mouse(event, licenses.shown(), running) || redraw;
                     break;
                 }
             } while (running && SDL_PollEvent(&event));
         }
 
         const auto now = Clock::now();
+        redraw = input.syncCursor(now) || redraw;
         if (now >= nextColorCheck) {
             const auto current = calib::platform::outputColor(window.get());
             redraw = redraw || current != outputColor;
+            if (current != outputColor) {
+                input.invalidateTargets();
+            }
             outputColor = current;
             nextColorCheck = now + std::chrono::seconds(2);
         }
         if (running && redraw) {
             const bool focused = (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
-            redraw = !renderer.draw({guide, diagnostics, exclusiveMode, focused, outputColor,
-                                     notice, licenses.page()});
+            redraw = !renderer.draw({guide, input.pointer(), input.pointerVisible(), diagnostics,
+                                     exclusiveMode, focused, outputColor, notice, licenses.page()},
+                                    input.targets());
             if (!redraw || !focused || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED)) {
                 settlingSince.reset();
             } else if (!settlingSince) {

@@ -28,6 +28,7 @@ struct Screen {
 struct Controls {
     std::string navigation;
     std::string answer;
+    std::array<std::string, 3> navigationButtons;
     std::string preview;
     std::string intro;
     std::string ditherLabel;
@@ -53,6 +54,11 @@ public:
 
     // A true result asks the application to exit.
     bool handle(Input input);
+    void selectAnswer(std::size_t answer);
+    bool activateMenuChoice(std::size_t choice);
+    bool canGoBack() const { return index_ > 0; }
+    bool canGoNext() const { return index_ + 1 < content_.screens.size(); }
+    bool keepsCursorVisible() const { return menuOpen_ || screen().id == "summary"; }
     const Screen& screen() const { return content_.screens[index_]; }
     const Controls& controls() const { return content_.controls; }
     std::optional<std::size_t> answer() const { return answers_[index_]; }

@@ -90,7 +90,8 @@ int panelColumns(int width, int scale)
 }
 
 void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D extent,
-                   VkRect2D panel, std::span<const std::string_view> lines, int scale)
+                   VkRect2D panel, std::span<const std::string_view> lines, int scale,
+                   PanelStyle style)
 {
     if (lines.empty() || panel.extent.width == 0 || panel.extent.height == 0) {
         return;
@@ -107,14 +108,18 @@ void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D
     push.rect = {panel.offset.x, panel.offset.y, static_cast<int>(panel.extent.width),
                  static_cast<int>(panel.extent.height)};
     push.solid = 1;
-    push.ink = {0.025f, 0.025f, 0.025f, 1.0f};
+    push.ink = style.fill;
     draw();
 
     push.solid = 0;
-    push.ink = {0.96f, 0.96f, 0.96f, 1.0f};
-    int y = panel.offset.y + 12 * scale;
+    push.ink = style.text;
+    const auto contentHeight = (25 * static_cast<int>(lines.size()) - 5) * scale;
+    int y = panel.offset.y + (style.centered
+        ? (static_cast<int>(panel.extent.height) - contentHeight) / 2 : 12 * scale);
     for (auto line : lines) {
-        int x = panel.offset.x + 12 * scale;
+        const auto lineWidth = glyphWidth * static_cast<int>(glyphCount(line)) * scale;
+        int x = panel.offset.x + (style.centered
+            ? (static_cast<int>(panel.extent.width) - lineWidth) / 2 : 12 * scale);
         for (unsigned char c : line) {
             if ((c & 0xc0u) == 0x80u) {
                 continue;

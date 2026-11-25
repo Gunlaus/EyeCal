@@ -25,6 +25,8 @@ You’ll need Windows 10 or 11 and a Vulkan 1.3 graphics driver. Set Windows to 
 | **F3** | Cycle text sizes |
 | **Esc** | Open the menu to resume or exit |
 
+The same actions are available in the on-screen Back, Next, and Menu buttons. Click a choice or press its number to answer. Scroll down to advance, scroll up or right-click to go back. Move the mouse to reveal the cursor. It hides after two seconds of inactivity and stays visible on the menu. Tab and Shift+Tab move between available buttons, and Enter activates the focused button.
+
 ## What’s planned
 
 - **Set black and white levels.** Find crushed shadows, clipped highlights, and full-range versus limited-range mismatches.

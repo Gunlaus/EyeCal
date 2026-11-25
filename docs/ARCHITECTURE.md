@@ -34,3 +34,12 @@ Screen 6c will compare the identical no-dither ramp at 8-bit and 10-bit on the s
 | The user saw no banding to compare, was unsure, or the two passes are otherwise incomparable | “Inconclusive.” Offer to repeat the comparison. |
 
 Only a paired, exclusive observation can produce wording about likely truncation. Exclusive presentation still provides no measurement of transport or panel depth. See [the Windows composition findings](VERIFIED.md#automatic-colour-management-and-10-bit-comparisons).
+
+
+## Mouse and keyboard controls
+
+The guide draws button rectangles and produces their hit map in the same layout pass. The input layer uses the map from the last frame accepted by Vulkan presentation, clearing it on screen, modal and geometry changes. SDL window coordinates are converted to framebuffer pixels on each pointer event. A click activates the same enabled target it pressed. Tab and Shift+Tab cycle through enabled targets. Arrow and number keys keep their direct actions, and Enter advances the guide when no button has Tab focus.
+
+Buttons are placed in the reserved UI bands or on the menu, with a minimum height of six percent of the framebuffer and additional height for larger text. At small resolutions, shortcut text is dropped first. If the remaining layout cannot fit, the app asks the user to reduce the text size and leaves the pattern area clear.
+
+The cursor uses a steady-clock deadline two seconds after the latest movement. The menu and the screen with the `summary` ID pin it visible. SDL focus and cursor handling stay in the app layer. A CPU-only divider component tracks an axis, a normalized split and the pointer's grab offset. It constrains both panes to their minimum size. The banding comparison can use it when that screen is added.

@@ -19,6 +19,14 @@ Every item below needs on-device checking. The build and CPU tests provide no vi
 - [ ] On the ramp preview, check Off, Ordered, Blue noise and TPDF. Confirm the thumbnail stays coarse, the main ramp has black and white endpoints, and the dither pattern is stable across redraws.
 - [ ] Compare the GPU ramp with the CPU reference using a capture that preserves swapchain code values. Check F1 and F11 independently of the guide, including exclusive-mode loss and recovery.
 
+## Mouse and keyboard controls
+
+- [ ] Click Back, Next, Menu, and each answer on the intro and ramp preview. Confirm edge buttons stay disabled where appropriate, and that a press dragged outside the original button does not trigger it.
+- [ ] Hover, press and release each button. Check Tab and Shift+Tab focus, Enter activation, number-key choices, and the original arrows and shortcuts. Confirm wheel down/up advances/goes back and right-click goes back.
+- [ ] Confirm the cursor starts hidden over the guide, appears on movement, and hides after two idle seconds. Leave the menu open beyond two seconds and check that the cursor stays visible. Repeat on the summary screen when it is implemented.
+- [ ] Repeat at multiple F3 sizes and Windows DPI settings, in both fullscreen modes and after Alt-Tab or monitor changes. Confirm the hit areas match the visible buttons, and that controls never cover either ramp.
+- [ ] Try a physical wheel and a touchpad, including natural scrolling. Confirm the cursor returns normally when leaving the app.
+
 ## Future calibration screens
 
 | Screen | What to confirm on real hardware once implemented |

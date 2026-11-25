@@ -43,7 +43,8 @@ Content loadContent(std::string_view text)
         const auto root = nlohmann::json::parse(text);
         const auto& c = root.at("controls");
         Content content{
-            {required(c, "navigation"), required(c, "answer"), required(c, "preview"),
+            {required(c, "navigation"), required(c, "answer"),
+             {required(c, "back"), required(c, "next"), required(c, "menu")}, required(c, "preview"),
              required(c, "intro"), required(c, "dither_label"),
              c.at("dither_modes").get<std::array<std::string, 4>>(),
              required(c, "text_overflow"), required(c, "menu_title"), required(c, "menu_help"),
@@ -90,6 +91,23 @@ patterns::Dither Session::dither() const
     return screen().pattern == Pattern::ramp ? previewDither_ : patterns::Dither::off;
 }
 
+void Session::selectAnswer(std::size_t answer)
+{
+    if (!menuOpen_ && answer < screen().answers.size()) {
+        answers_[index_] = answer;
+    }
+}
+
+bool Session::activateMenuChoice(std::size_t choice)
+{
+    if (!menuOpen_ || choice >= controls().menuChoices.size()) {
+        return false;
+    }
+    menuChoice_ = choice;
+    menuOpen_ = false;
+    return choice == 1;
+}
+
 bool Session::handle(Input input)
 {
     if (input == Input::textSize) {
@@ -105,20 +123,19 @@ bool Session::handle(Input input)
         if (input == Input::up || input == Input::down) {
             menuChoice_ = menuChoice_ == 0 ? 1 : 0;
         } else if (input == Input::confirm) {
-            menuOpen_ = false;
-            return menuChoice_ == 1;
+            return activateMenuChoice(menuChoice_);
         }
         return false;
     }
     switch (input) {
     case Input::previous:
-        if (index_ > 0) {
+        if (canGoBack()) {
             --index_;
         }
         break;
     case Input::next:
     case Input::confirm:
-        if (index_ + 1 < content_.screens.size()) {
+        if (canGoNext()) {
             ++index_;
         }
         break;

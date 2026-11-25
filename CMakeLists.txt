@@ -30,7 +30,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ENGLISH_LOCALE
 file(READ "${ENGLISH_LOCALE}" english_json)
 configure_file(cmake/locale.hpp.in "${GENERATED_DIR}/locale.hpp" @ONLY)
 
-add_library(eyecal_core STATIC src/guide/guide.cpp src/patterns/quantize.cpp)
+add_library(eyecal_core STATIC src/guide/guide.cpp src/patterns/quantize.cpp src/ui/interaction.cpp)
 target_include_directories(eyecal_core PUBLIC src PRIVATE assets/blue-noise)
 target_link_libraries(eyecal_core PRIVATE nlohmann_json::nlohmann_json)
 if(MSVC)
@@ -56,6 +56,10 @@ if(BUILD_TESTING)
         COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/no_srgb_formats.cmake)
     add_test(NAME m2_guide_and_quantize COMMAND core_tests)
+    add_executable(interaction_tests tests/interaction_tests.cpp)
+    target_include_directories(interaction_tests PRIVATE "${GENERATED_DIR}")
+    target_link_libraries(interaction_tests PRIVATE eyecal_core doctest::doctest)
+    add_test(NAME mouse_and_keyboard_interaction COMMAND interaction_tests)
 endif()
 if(NOT EYECAL_BUILD_APP)
     return()
@@ -101,7 +105,7 @@ foreach(shader_name IN ITEMS quad.vert overlay.frag ramp.frag)
     list(APPEND shader_headers "${header}")
 endforeach()
 
-add_executable(EyeCal WIN32 src/app/main.cpp src/vk/renderer.cpp src/vk/quad.cpp
+add_executable(EyeCal WIN32 src/app/main.cpp src/app/guide_input.cpp src/vk/renderer.cpp src/vk/quad.cpp
     src/ui/overlay.cpp src/ui/guide_view.cpp src/patterns/ramp.cpp ${shader_headers})
 target_include_directories(EyeCal PRIVATE src "${GENERATED_DIR}")
 target_link_libraries(EyeCal PRIVATE eyecal_core SDL3::SDL3-static volk::volk)

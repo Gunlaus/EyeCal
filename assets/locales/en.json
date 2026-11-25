@@ -1,14 +1,17 @@
 {
   "controls": {
-    "navigation": "Left / Right Back / Next   Enter Next   Esc Menu",
-    "answer": "Up / Down Choose an answer",
+    "navigation": "Wheel or Left / Right: Back / Next   Right-click: Back",
+    "back": "Back",
+    "next": "Next",
+    "menu": "Menu",
+    "answer": "Choose by click, Up / Down, or number.",
     "preview": "D Change dither   F3 Text size   F1 Diagnostics",
     "intro": "F3 Text size   F1 Diagnostics",
     "dither_label": "Dither",
     "dither_modes": ["Off", "Ordered", "Blue noise", "TPDF"],
     "text_overflow": "Text too large here. Press F3.",
     "menu_title": "EyeCal menu",
-    "menu_help": "Up / Down Select   Enter Confirm   Esc Resume",
+    "menu_help": "Click or Up / Down   Enter Confirm   Esc Resume",
     "resume": "Resume",
     "exit": "Exit EyeCal"
   },

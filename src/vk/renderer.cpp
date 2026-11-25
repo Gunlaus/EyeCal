@@ -346,7 +346,7 @@ bool Renderer::buildSwapchain(bool exclusiveRequested)
     return true;
 }
 
-void Renderer::record(std::uint32_t index, const Frame& frame)
+std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& frame)
 {
     check(vkResetCommandBuffer(command_, 0), "Reset command buffer");
     VkCommandBufferBeginInfo begin{};
@@ -398,9 +398,11 @@ void Renderer::record(std::uint32_t index, const Frame& frame)
     if (!frame.notice.empty()) {
         lines[lineCount++] = frame.notice;
     }
+    std::vector<ui::HitTarget> targets;
     if (frame.licensePage.empty()) {
-        ui::drawGuide(command_, overlay_, ramp_, extent_, patterns::OutputDepth::unorm8,
-                      frame.guide, std::span{lines}.first(lineCount));
+        targets = ui::drawGuide(command_, overlay_, ramp_, extent_, patterns::OutputDepth::unorm8,
+                                frame.guide, std::span{lines}.first(lineCount), frame.pointer,
+                                frame.pointerVisible);
     } else {
         std::vector<std::string_view> page(frame.licensePage.begin(), frame.licensePage.end());
         if (frame.outputColor == platform::OutputColor::hdr) {
@@ -418,10 +420,12 @@ void Renderer::record(std::uint32_t index, const Frame& frame)
                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
                          0, nullptr, 0, nullptr, 1, &barrier);
     check(vkEndCommandBuffer(command_), "Finish drawing");
+    return targets;
 }
 
-bool Renderer::draw(const Frame& frame)
+bool Renderer::draw(const Frame& frame, std::vector<ui::HitTarget>& targets)
 {
+    targets.clear();
     if (SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED) {
         return false;
     }
@@ -442,7 +446,7 @@ bool Renderer::draw(const Frame& frame)
     if (acquired != VK_SUBOPTIMAL_KHR) {
         check(acquired, "Acquire swapchain image");
     }
-    record(index, frame);
+    auto nextTargets = record(index, frame);
     check(vkResetFences(device_, 1, &frameFence_), "Reset frame fence");
     const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit{};
@@ -471,6 +475,7 @@ bool Renderer::draw(const Frame& frame)
     if (result != VK_SUBOPTIMAL_KHR) {
         check(result, "Present frame");
     }
+    targets = std::move(nextTargets);
     // A working SUBOPTIMAL presentation may persist until the next display event.
     return true;
 }

@@ -31,3 +31,10 @@
 **UNVERIFIED on device.** Matching the swapchain to the SDL framebuffer establishes 1:1 rendering inside the app. Panel-native scanout, GPU scaling, overscan and compositor behavior require hardware checks. M1 follows the selected desktop mode and leaves the display's hardware settings to the user.
 
 For swapchain teardown on the baseline Vulkan path, M1 uses device idle, the conventional fallback described by Khronos. The core API has limited presentation-completion guarantees. This is a reason to stress-test toggling and exit on device. [Khronos swapchain semaphore reuse and teardown](https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html#_problem_3_shutdown)
+
+
+## Pointer input on fullscreen displays
+
+**VERIFIED from SDL documentation.** SDL mouse motion and button positions are relative to the window. The window size in window coordinates and its size in pixels have separate queries. EyeCal converts positions by the ratio on each axis before testing Vulkan UI rectangles. SDL exposes whole-tick wheel deltas, reports a flipped scroll direction, and exposes cursor visibility through `SDL_ShowCursor` and `SDL_HideCursor`. [SDL mouse motion](https://wiki.libsdl.org/SDL3/SDL_MouseMotionEvent) · [SDL mouse buttons](https://wiki.libsdl.org/SDL3/SDL_MouseButtonEvent) · [SDL window pixel size](https://wiki.libsdl.org/SDL3/SDL_GetWindowSizeInPixels) · [SDL mouse wheel](https://wiki.libsdl.org/SDL3/SDL_MouseWheelEvent) · [SDL cursor visibility](https://wiki.libsdl.org/SDL3/SDL_HideCursor)
+
+**UNVERIFIED on device.** Pointer alignment across mixed-DPI monitors, cursor behavior during Windows fullscreen mode switches, and touchpad scroll behavior require hardware testing. [On-device checklist](ON_DEVICE_CHECKLIST.md#mouse-and-keyboard-controls)

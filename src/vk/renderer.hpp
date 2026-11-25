@@ -3,6 +3,7 @@
 #include "guide/guide.hpp"
 #include "platform/platform.hpp"
 #include "ui/overlay.hpp"
+#include "ui/interaction.hpp"
 
 #include <cstdint>
 #include <span>
@@ -13,6 +14,8 @@ namespace calib::vk {
 
 struct Frame {
     const guide::Session& guide;
+    const ui::Pointer& pointer;
+    bool pointerVisible;
     bool diagnostics;
     bool exclusiveRequested;
     bool focused;
@@ -33,11 +36,11 @@ public:
     void dropSwapchain();
 
     // False means the window or swapchain is still settling. Try again on the next event tick.
-    bool draw(const Frame& frame);
+    bool draw(const Frame& frame, std::vector<ui::HitTarget>& targets);
 
 private:
     bool buildSwapchain(bool exclusiveRequested);
-    void record(std::uint32_t index, const Frame& frame);
+    std::vector<ui::HitTarget> record(std::uint32_t index, const Frame& frame);
 
     SDL_Window* window_ = nullptr;
     VkInstance instance_ = VK_NULL_HANDLE;
