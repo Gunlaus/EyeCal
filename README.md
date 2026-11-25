@@ -6,12 +6,13 @@ Can you make out the darkest step? Do the brightest whites still look distinct? 
 
 EyeCal is designed for people without a colorimeter. Measuring color accuracy still requires a meter.
 
-> **Project status · Milestone 1**  
-> The Windows prototype, `CalibGuide.exe`, opens a fullscreen grey field and shows how the app is presenting it. The guided calibration screens are planned for later milestones.
+> **Project status · Milestone 1**
+>
+> The Windows prototype, `EyeCal.exe`, opens a fullscreen grey field and shows how the app is presenting it. The guided calibration screens are planned for later milestones.
 
 ## Try the Windows prototype
 
-You’ll need Windows 10 or 11 and a Vulkan 1.3 graphics driver. Set Windows to the display’s recommended resolution, then build the executable below or download `CalibGuide-Windows-x64` from a successful Windows run in [GitHub Actions](https://github.com/Gunlaus/EyeCal/actions/workflows/build.yml). Unzip the artifact and double-click `CalibGuide.exe`.
+You’ll need Windows 10 or 11 and a Vulkan 1.3 graphics driver. Set Windows to the display’s recommended resolution, then build the executable below or download `EyeCal-Windows-x64` from a successful Windows run in [GitHub Actions](https://github.com/Gunlaus/EyeCal/actions/workflows/build.yml). Unzip the artifact and double-click `EyeCal.exe`.
 
 | Key | What it does |
 | --- | --- |
@@ -37,7 +38,7 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The executable is at `build/Release/CalibGuide.exe`. SDL, volk, shaders, and the font atlas are built in. The app uses the system graphics driver and makes no network requests.
+The executable is at `build/Release/EyeCal.exe`. SDL, volk, shaders, and the font atlas are built in. The app uses the system graphics driver and makes no network requests.
 
 <details>
 <summary>Optional Linux build and CPU-only checks</summary>
@@ -50,7 +51,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-For CPU checks without SDL or a shader compiler, add `-DCALIBGUIDE_BUILD_APP=OFF` when configuring.
+For CPU checks without SDL or a shader compiler, add `-DEYECAL_BUILD_APP=OFF` when configuring.
 
 </details>
 

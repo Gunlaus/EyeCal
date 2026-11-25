@@ -94,7 +94,7 @@ void Renderer::initialize(SDL_Window* window)
     }
     volkInitializeCustom(loader);
     if (volkGetInstanceVersion() < VK_API_VERSION_1_3) {
-        throw std::runtime_error("CalibGuide requires a Vulkan 1.3 loader and graphics driver.");
+        throw std::runtime_error("EyeCal requires a Vulkan 1.3 loader and graphics driver.");
     }
 
     Uint32 count = 0;
@@ -114,7 +114,7 @@ void Renderer::initialize(SDL_Window* window)
     }
     VkApplicationInfo app{};
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app.pApplicationName = "CalibGuide";
+    app.pApplicationName = "EyeCal";
     app.apiVersion = VK_API_VERSION_1_3;
     VkInstanceCreateInfo instanceInfo{};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -385,7 +385,7 @@ void Renderer::record(std::uint32_t index, bool diagnostics, bool modeRequested,
     if (diagnostics) {
         format = "Format: " + std::string(formatName(format_));
         extent = "Extent: " + std::to_string(extent_.width) + " x " + std::to_string(extent_.height);
-        lines[lineCount++] = "CalibGuide / M1";
+        lines[lineCount++] = "EyeCal / M1";
         lines[lineCount++] = format;
         lines[lineCount++] = extent;
         lines[lineCount++] = "Present: FIFO";
