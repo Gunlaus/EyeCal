@@ -158,7 +158,7 @@
       ],
       "should_see": "When dither helps, stripes become finer and the gradient looks more continuous.",
       "bad_example": "Bad example: large stripes interrupt the transition.",
-      "pattern_label": "6a  Baseline - dither off",
+      "pattern_label": "Same ramp and range in both modes",
       "name": "Dither on / off"
     },
     {

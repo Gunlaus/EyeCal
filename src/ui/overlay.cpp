@@ -34,15 +34,18 @@ std::size_t utf8Length(unsigned char lead)
     return lead < 0xf0u ? 3 : 4;
 }
 
-std::size_t glyphCount(std::string_view text)
+int advance(unsigned char ch)
 {
-    std::size_t count = 0;
-    for (unsigned char ch : text) {
-        if ((ch & 0xc0u) != 0x80u) {
-            ++count;
-        }
-    }
-    return count;
+    if ((ch & 0xc0u) == 0x80u) return 0;
+    const auto glyph = ch >= 32 && ch <= 126 ? ch : '?';
+    return glyphAdvances[glyph - 32];
+}
+
+int textWidth(std::string_view text)
+{
+    int width = 0;
+    for (unsigned char ch : text) width += advance(ch);
+    return width;
 }
 
 } // namespace
@@ -59,11 +62,16 @@ std::vector<std::string_view> wrapText(std::span<const std::string_view> paragra
         return lines;
     }
     for (auto remaining : paragraphs) {
-        while (glyphCount(remaining) > static_cast<std::size_t>(columns)) {
+        const int limit = columns * averageAdvance;
+        while (textWidth(remaining) > limit) {
             std::size_t bytes = 0;
-            for (int column = 0; column < columns; ++column) {
-                bytes += utf8Length(static_cast<unsigned char>(remaining[bytes]));
-            }
+            int width = 0;
+            do {
+                const auto ch = static_cast<unsigned char>(remaining[bytes]);
+                if (bytes && width + advance(ch) > limit) break;
+                width += advance(ch);
+                bytes += utf8Length(ch);
+            } while (bytes < remaining.size());
             const auto space = remaining.rfind(' ', bytes);
             const auto split = space == 0 || space == std::string_view::npos ? bytes : space;
             lines.push_back(remaining.substr(0, split));
@@ -87,7 +95,7 @@ int panelHeight(std::size_t lines, int scale)
 
 int panelColumns(int width, int scale)
 {
-    return (width / scale - 2 * theme::spacing) / glyphWidth;
+    return (width / scale - 2 * theme::spacing) / averageAdvance;
 }
 
 void drawShape(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D extent,
@@ -142,14 +150,14 @@ void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D
     bool first = true;
     for (auto line : lines) {
         const bool isHeading = first && style.heading &&
-            glyphCount(line) * glyphWidth * theme::titleScale * scale <=
+            textWidth(line) * theme::titleScale * scale <=
                 static_cast<int>(panel.extent.width) - 2 * theme::spacing * scale;
         first = false;
         const float glyphScale = static_cast<float>(scale) * (isHeading ? theme::titleScale : 1.0f);
         const int glyphPixels = static_cast<int>(glyphWidth * glyphScale);
         const int glyphRows = static_cast<int>(glyphHeight * glyphScale);
         push.cellScale = glyphScale;
-        const auto lineWidth = glyphPixels * static_cast<int>(glyphCount(line));
+        const auto lineWidth = static_cast<int>(textWidth(line) * glyphScale);
         int x = panel.offset.x + (style.centered
             ? (static_cast<int>(panel.extent.width) - lineWidth) / 2 : 12 * scale);
         for (unsigned char c : line) {
@@ -162,7 +170,7 @@ void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D
                 push.rect = {x, y, glyphPixels, glyphRows};
                 draw();
             }
-            x += glyphPixels;
+            x += static_cast<int>(advance(c) * glyphScale);
         }
         y += theme::baseline * scale;
     }
@@ -174,13 +182,13 @@ void drawOverlay(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D e
     if (lines.empty()) {
         return;
     }
-    std::size_t longest = 0;
+    int longest = 0;
     for (auto line : lines) {
-        longest = std::max(longest, glyphCount(line));
+        longest = std::max(longest, textWidth(line));
     }
     const auto width = static_cast<int>(extent.width);
     const auto height = static_cast<int>(extent.height);
-    const int baseWidth = 24 + glyphWidth * static_cast<int>(longest);
+    const int baseWidth = 2 * theme::spacing + longest;
     const int scale = std::max(1, std::min({width / 960, (width - 24) / baseWidth,
                                           (height - 24) / panelHeight(lines.size(), 1)}));
     const int margin = std::min({12 * scale, width / 4, height / 4});

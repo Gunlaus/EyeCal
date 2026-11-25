@@ -7,7 +7,7 @@
 | Vulkan-Headers | 1.4.321 | Apache-2.0 and MIT materials. Build-time headers. [Upstream notices](https://github.com/KhronosGroup/Vulkan-Headers/blob/v1.4.321/LICENSE.md) |
 | doctest | 2.4.12 | MIT. CPU test executable only. [Upstream license](https://github.com/doctest/doctest/blob/v2.4.12/LICENSE.txt) |
 | JSON for Modern C++ | 3.12.0 | MIT. Header-only parser compiled into EyeCal. [Upstream license](https://github.com/nlohmann/json/blob/v3.12.0/LICENSE.MIT) |
-| Geist Mono | Vercel, via Google Fonts | SIL Open Font License 1.1. Source font and [license](assets/font/OFL.txt) included. The app embeds a derived signed-distance atlas. [Font source](https://github.com/google/fonts/tree/main/ofl/geistmono) |
+| Inter | The Inter Project, via Google Fonts | SIL Open Font License 1.1. Source font and [license](assets/font/OFL.txt) included. The app embeds a derived signed-distance atlas. [Font source](https://github.com/google/fonts/tree/main/ofl/inter) |
 | glslc | Vulkan SDK or developer installation | Build-time GLSL compiler. [Shaderc license](https://github.com/google/shaderc/blob/main/LICENSE) |
 
 The executable displays the embedded font, SDL, volk and JSON for Modern C++ license text with F2.

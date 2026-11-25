@@ -16,10 +16,10 @@ layout(location = 0) out vec4 color;
 
 float distanceSample(ivec2 cell)
 {
-    if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(12, 20)))) {
+    if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(16, 16)))) {
         return 0.0;
     }
-    int index = cell.y * 12 + cell.x;
+    int index = cell.y * 16 + cell.x;
     int word = index >> 4;
     uint packed = overlay.glyph[word >> 2][word & 3];
     return float((packed >> (2 * (index & 15))) & 3u);

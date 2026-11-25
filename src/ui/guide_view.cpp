@@ -26,7 +26,7 @@ struct ButtonRow {
 };
 
 ButtonRow layoutButtons(std::span<const Button> buttons, int width, int minHeight,
-                        int scale, int gap)
+                        int scale, int gap, int maxPerRow = 8)
 {
     ButtonRow layout;
     if (buttons.empty() || panelColumns(width, scale) < 1) {
@@ -34,7 +34,7 @@ ButtonRow layoutButtons(std::span<const Button> buttons, int width, int minHeigh
     }
     constexpr int comfortableGlyphs = 10;
     const int comfortableWidth = (24 + 12 * comfortableGlyphs) * scale;
-    const auto perRow = static_cast<std::size_t>(std::max(1, (width + gap) / (comfortableWidth + gap)));
+    const auto perRow = static_cast<std::size_t>(std::clamp((width + gap) / (comfortableWidth + gap), 1, maxPerRow));
     for (std::size_t start = 0; start < buttons.size(); start += perRow) {
         const auto count = static_cast<int>(std::min(perRow, buttons.size() - start));
         const int cellWidth = (width - (count - 1) * gap) / count;
@@ -212,7 +212,7 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
 
     auto settingRow = layoutButtons(settings, innerWidth, minButtonHeight, scale, gap);
     const int settingsHeight = settingRow.height ? settingRow.height + gap : 0;
-    auto choiceRow = layoutButtons(choices, innerWidth, minButtonHeight, scale, gap);
+    auto choiceRow = layoutButtons(choices, innerWidth, minButtonHeight, scale, gap, 5);
     auto navRow = layoutButtons(navigation, innerWidth, minButtonHeight, scale, gap);
     const auto questionLines = wrapText(question, columns);
     auto shortcutLines = wrapText(shortcuts, columns);
@@ -367,7 +367,9 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
     const int choiceTop = menu && middleHeight >= 0 ? middleTop
                                                      : bottomTop + settingsHeight + questionHeight;
     place(choiceRow, margin, choiceTop, targets);
-    place(navRow, margin, choiceTop + choiceRow.height + gap, targets);
+    const int navTop = start && middleHeight >= actionHeight ? settingTop + settingRow.height + gap :
+                       choiceTop + choiceRow.height + gap;
+    place(navRow, margin, navTop, targets);
     const auto hovered = pointerVisible || pointer.pressed() ? pointer.hovered(targets) : std::nullopt;
     drawButtons(command, overlay, extent, settings, settingRow, scale, pointer, hovered, motion);
     drawButtons(command, overlay, extent, choices, choiceRow, scale, pointer, hovered, motion);
