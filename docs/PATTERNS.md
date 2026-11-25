@@ -21,7 +21,7 @@ The shader takes display-encoded values and computes `floor(value * maxCode + of
 
 See [the blue-noise asset origin and licence](../THIRD_PARTY.md) and [Ulichney’s void-and-cluster paper](https://doi.org/10.1117/12.152707).
 
-Levels, PLUGE-style black level, white clip, gamma, sharpness, banding, flat fields and the synthetic reference scene are scheduled for later milestones. Add exact code values, rationale and citations when introducing each pattern.
+Flat fields and the synthetic reference scene are scheduled for a later milestone.
 
 ## M3 calibration patterns
 
@@ -35,3 +35,14 @@ All values below are 8-bit full-range RGB codes, with dither Off. A strip index 
 | 3. White | Codes 235, 240, 245, 247, 249, 251, 253, 254, 255. Bad example sets every value from 247 onward to 255. | [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange) |
 | 4. Gamma | Three 2 × 2 tiles contain 1, 2 and 3 white pixels respectively, with codes 0 and 255. Solids are nearest codes to the inverse display transfer at linear fractions 0.25, 0.5 and 0.75. sRGB yields 137, 188, 225. Gamma 2.2 yields 136, 186, 224. Ideal-black BT.1886 yields 143, 191, 226. The bad example adds 0.14 encoded value before quantization, clamped to white. | [W3C sRGB transfer function](https://www.w3.org/TR/css-color-4/#color-conversion-code) · [ITU-R BT.1886](https://www.itu.int/rec/R-REC-BT.1886) |
 | 5. Sharpness | Alternating 64/192 single-pixel lines and a clean 64/192 edge. Border and outer-screen marks use code 224. Corner marks use 255. Bad example substitutes 16 and 240 in the two columns adjacent to the edge on each side. | [Vulkan fragment coordinates](https://docs.vulkan.org/refpages/latest/refpages/source/FragCoord.html) |
+
+## M4 banding diagnostic
+
+| Part | Exact signal and interpretation |
+| --- | --- |
+| 6a. Baseline | Vertical encoded ramp from 0 to 1 across the region, with code `round(255*y/(h-1))` on the 8-bit path and no dither. One row is black. The coarse thumbnail uses 8 evenly spaced code levels. |
+| 6b. Dither comparison | The same normalized ramp is shared row-for-row across the two sides. The left side uses no dither and the right uses the selected ordered, blue-noise, or TPDF offset before quantization. The divider changes the split column only. |
+| 6c. Depth | The same horizontal encoded ramp and region are drawn for both passes with dither off. On an 8-bit surface the code maximum is 255, and on a 10-bit surface it is 1023. A surface format states attachment precision. Actual scanout depth requires independent verification. |
+| 6d. Shadows | Upper region maps linear light 0–0.20 through the sRGB transfer function. Lower region maps linear light 0.20–0.40. Both span the full width with dither off. At 8-bit the endpoint pairs are 0–124 and 124–170. In motion mode, replace normalized horizontal position `x` with `1 - abs(2 * fract(0.5 * x + phase) - 1)`. Phase moves at one cycle per 16 seconds on a monotonic clock. This is a visually moving stimulus for observing temporal artifacts. |
+
+Underlying conventions are documented by [Khronos on swapchain format pairs](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormatsKHR.html), the [Vulkan fixed-point conversion rules](https://docs.vulkan.org/spec/latest/chapters/fundamentals.html#fundamentals-fixedfpconv), and the [W3C sRGB conversion code](https://www.w3.org/TR/css-color-4/#color-conversion-code).

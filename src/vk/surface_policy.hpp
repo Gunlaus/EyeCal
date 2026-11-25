@@ -25,6 +25,23 @@ inline std::optional<VkSurfaceFormatKHR> chooseSurfaceFormat(
     return std::nullopt;
 }
 
+inline bool isTenBitFormat(VkFormat format)
+{
+    return format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 || format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+}
+
+inline std::optional<VkSurfaceFormatKHR> chooseTenBitFormat(std::span<const VkSurfaceFormatKHR> formats)
+{
+    for (auto requested : {VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_FORMAT_A2R10G10B10_UNORM_PACK32}) {
+        for (const auto& format : formats) {
+            if (format.format == requested && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return format;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 inline bool equalExtent(VkExtent2D a, VkExtent2D b)
 {
     return a.width == b.width && a.height == b.height;

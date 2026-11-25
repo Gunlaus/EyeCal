@@ -20,7 +20,7 @@ struct Rect {
     bool contains(Point point) const;
 };
 
-enum class Command { back, next, menu, answer, menuChoice, setting };
+enum class Command { back, next, menu, answer, menuChoice, setting, dither, bitDepth, movePattern, divider, probeRegion };
 
 struct Action {
     Command command;
@@ -70,6 +70,9 @@ private:
     std::optional<Action> keyboardFocus_;
     bool tabFocus_ = false;
 };
+
+inline constexpr int dividerHandleRadius = 12;
+inline constexpr int dividerMinimumPane = 24;
 
 enum class Axis { x, y };
 

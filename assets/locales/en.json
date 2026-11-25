@@ -22,7 +22,23 @@
     "reduce_motion": "Reduce motion",
     "on": "On",
     "off": "Off",
-    "step_separator": " of "
+    "step_separator": " of ",
+    "probe_results": [
+      "Compare both 8-bit and 10-bit passes, then choose a result.",
+      "10-bit comparison unavailable on this display surface.",
+      "Inconclusive in borderless mode. Windows composition may limit output depth.",
+      "10-bit looked smoother on this display.",
+      "The chain is probably truncating to 8-bit. Check GPU, driver, cable or display.",
+      "Inconclusive. Repeat the two passes on the same display at the same size."
+    ],
+    "depth_buttons": [
+      "Switch to 10-bit (B)",
+      "Switch to 8-bit (B)"
+    ],
+    "motion_buttons": [
+      "Start moving ramp (M)",
+      "Pause moving ramp (M)"
+    ]
   },
   "screens": [
     {
@@ -175,6 +191,92 @@
       ],
       "pattern": "sharpness",
       "pattern_label": "Single-pixel lines and corner markers"
+    },
+    {
+      "id": "banding-a",
+      "pattern": "ramp",
+      "headline": "Look for bands in the baseline ramp",
+      "instructions": [
+        "Keep dither off for this first pass. Look for broad bands, not individual pixels."
+      ],
+      "should_see": "You should see a continuous-looking transition from black to white.",
+      "bad_example": "Bad example: large stripes interrupt the transition.",
+      "question": "How does the baseline look?",
+      "answers": [
+        "Smooth",
+        "Visible bands",
+        "Unsure"
+      ],
+      "pattern_label": "6a  Baseline - dither off"
+    },
+    {
+      "id": "banding-b",
+      "pattern": "banding_split",
+      "headline": "Compare dither on and off",
+      "instructions": [
+        "Drag the divider handle. Click the dither button or press D to change methods."
+      ],
+      "should_see": "Left uses no dither. Fine texture on the right can make bands less visible.",
+      "bad_example": "Compare both sides at the same brightness along each vertical ramp.",
+      "question": "Which side looks smoother?",
+      "answers": [
+        "No dither",
+        "Dithered",
+        "About the same"
+      ],
+      "pattern_label": "6b  Dither comparison"
+    },
+    {
+      "id": "banding-c",
+      "pattern": "banding_depth",
+      "headline": "Compare 8-bit and 10-bit output",
+      "instructions": [
+        "Use B or the button. F1 shows the format and fullscreen mode.",
+        "Turn off HDR and auto colour management before comparing."
+      ],
+      "should_see": "The ramp should show the same range in both passes.",
+      "bad_example": "Broad bands with no improvement are a clue only in granted Vulkan exclusive mode.",
+      "question": "Which pass looked smoother?",
+      "answers": [
+        "10-bit smoother",
+        "Visible bands, no improvement",
+        "Unsure"
+      ],
+      "pattern_label": "6c  Output bit depth"
+    },
+    {
+      "id": "banding-d",
+      "pattern": "banding_dark",
+      "headline": "Check the shadows and midtones",
+      "instructions": [
+        "The top ramp covers near-black. The lower ramp compares mid-grey. Press M or use the button to check the moving version."
+      ],
+      "should_see": "Look for steps, moving grain, or flicker and note which region shows it.",
+      "bad_example": "Look for coarse bands or moving texture that distracts from the gradient.",
+      "question": "Where do you see bands?",
+      "answers": [
+        "Only in shadows",
+        "Across both ramps",
+        "None or unsure"
+      ],
+      "pattern_label": "6d  Shadow and mid-grey ramps",
+      "result_hints": [
+        [
+          "Shadow processing may be involved. Try disabling dynamic contrast and any shadow boost.",
+          "The signal chain or content may be involved. Compare another cable or source.",
+          "No likely cause identified from this comparison."
+        ],
+        [
+          "Local dimming, shadow processing, or automatic brightness limiting (ABL) may be involved. Try a neutral mode, lower OLED brightness, or compare local dimming settings.",
+          "The signal chain or content may be involved. Compare another HDMI input, cable or source.",
+          "No likely cause identified from this comparison."
+        ],
+        [
+          "Shadow processing or dynamic iris may be involved. Try disabling the iris or dynamic contrast.",
+          "The signal chain or content may be involved. Compare another input, cable or source.",
+          "No likely cause identified from this comparison."
+        ]
+      ]
     }
   ]
 }

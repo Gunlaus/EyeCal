@@ -102,11 +102,11 @@ TEST_CASE("Dither preserves exact endpoints and ramp spans every code in either 
 TEST_CASE("Embedded English text includes the display preparation and validates input")
 {
     const auto content = guide::loadContent(guide::englishJson);
-    REQUIRE(content.screens.size() == 6);
+    REQUIRE(content.screens.size() == 10);
     CHECK(content.screens.front().id == "intro");
     CHECK(content.screens.front().instructions.front().find("HDR and auto colour management")
           != std::string::npos);
-    CHECK(content.screens.back().pattern == guide::Pattern::sharpness);
+    CHECK(content.screens[5].pattern == guide::Pattern::sharpness);
     CHECK_THROWS_AS(guide::loadContent("{"), std::runtime_error);
     CHECK_THROWS_AS(guide::loadContent("{}"), std::runtime_error);
 
@@ -120,7 +120,7 @@ TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent"
     using guide::Input;
     auto content = guide::loadContent(guide::englishJson);
     content.screens.resize(2);
-    content.screens.back().pattern = guide::Pattern::ramp;
+    content.screens.back().pattern = guide::Pattern::bandingSplit;
     guide::Session session(content);
     CHECK_FALSE(session.answer().has_value());
     CHECK_FALSE(session.handle(Input::previous));
@@ -135,8 +135,7 @@ TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent"
     CHECK_FALSE(session.handle(Input::down));
     CHECK_FALSE(session.handle(Input::down));
     CHECK(session.answer() == 1);
-    for (auto mode : {patterns::Dither::ordered, patterns::Dither::blueNoise,
-                      patterns::Dither::tpdf, patterns::Dither::off}) {
+    for (auto mode : {patterns::Dither::tpdf, patterns::Dither::ordered, patterns::Dither::blueNoise}) {
         CHECK_FALSE(session.handle(Input::dither));
         CHECK(session.dither() == mode);
     }
@@ -174,4 +173,68 @@ TEST_CASE("Display type supplies the gamma default until manually overridden")
     REQUIRE(session.screen().pattern == Pattern::gamma);
     session.cycleSetting(0, -1);
     CHECK(session.setting(Setting::gamma) == 1);
+}
+
+TEST_CASE("Banding ramps preserve reference endpoints and expected step counts")
+{
+    using namespace patterns;
+    CHECK(countRampSteps(0, false) == 0);
+    CHECK(countRampSteps(37, true) == 37);
+    CHECK(countRampSteps(1920, false) == 256);
+    CHECK(countRampSteps(1920, true) == 1024);
+    CHECK(bandingRamp(0, 301, false) == 0.0f);
+    CHECK(bandingRamp(300, 301, false) == doctest::Approx(0.484529f));
+    CHECK(bandingRamp(0, 301, true) == doctest::Approx(0.484529f));
+    CHECK(bandingRamp(300, 301, true) == doctest::Approx(0.665185f));
+    CHECK(bandingRamp(0, 301, false, 0.5f) == doctest::Approx(bandingRamp(300, 301, false)));
+    CHECK(bandingRamp(15, 31, false, 1.0f) == bandingRamp(15, 31, false));
+}
+
+TEST_CASE("Bit-depth comparison never suggests truncation without two matching exclusive passes")
+{
+    using namespace patterns;
+    BitDepthProbe probe;
+    constexpr Observation exclusive{1, 800, 400, true};
+    CHECK(probe.result(1) == ProbeResult::pending);
+    CHECK(probe.observe(false, false, exclusive));
+    CHECK(probe.result(1) == ProbeResult::unavailable);
+    CHECK(probe.reset());
+    for (int i = 0; i < 48; ++i) {
+        CHECK(probe.observe(true, false, exclusive));
+        CHECK(probe.result(1) == ProbeResult::pending);
+        CHECK(probe.observe(true, true, {1, 800, 400, false}));
+        CHECK(probe.result(1) == ProbeResult::borderless);
+        CHECK(probe.observe(true, true, {1, 800, 420, true}));
+        CHECK(probe.result(1) == ProbeResult::inconclusive);
+        CHECK(probe.observe(true, true, exclusive));
+        CHECK(probe.result(0) == ProbeResult::smoother);
+        CHECK(probe.result(1) == ProbeResult::likelyTruncation);
+        CHECK(probe.result(2) == ProbeResult::inconclusive);
+        CHECK_FALSE(probe.observe(true, true, exclusive));
+        CHECK(probe.reset());
+    }
+}
+
+TEST_CASE("Banding maps answers to display-specific hints and groups the four parts")
+{
+    using namespace guide;
+    const auto content = loadContent(englishJson);
+    Session session(content);
+    session.cycleSetting(0);
+    for (int i = 0; i < 8; ++i) session.handle(Input::next);
+    CHECK(session.stepCount() == 7);
+    CHECK(session.step() == 7);
+    CHECK_FALSE(session.canAnswer());
+    session.selectAnswer(1);
+    CHECK_FALSE(session.answer());
+    session.probe().observe(true, false, {1, 800, 400, true});
+    session.probe().observe(true, true, {1, 800, 400, false});
+    session.selectAnswer(1);
+    CHECK(session.resultHint().starts_with("Inconclusive in borderless mode"));
+    session.handle(Input::next);
+    CHECK(session.step() == 7);
+    session.selectAnswer(0);
+    CHECK(session.resultHint().find("Local dimming") != std::string_view::npos);
+    session.selectAnswer(1);
+    CHECK(session.resultHint().find("signal chain or content") != std::string_view::npos);
 }

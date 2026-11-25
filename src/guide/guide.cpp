@@ -33,6 +33,9 @@ Pattern patternFrom(std::string_view name)
     if (name == "white") return Pattern::white;
     if (name == "gamma") return Pattern::gamma;
     if (name == "sharpness") return Pattern::sharpness;
+    if (name == "banding_split") return Pattern::bandingSplit;
+    if (name == "banding_depth") return Pattern::bandingDepth;
+    if (name == "banding_dark") return Pattern::bandingDark;
     throw std::runtime_error("Unknown guide pattern: " + std::string(name));
 }
 
@@ -63,7 +66,10 @@ Content loadContent(std::string_view text)
              c.at("dither_modes").get<std::array<std::string, 4>>(),
              required(c, "text_overflow"), required(c, "menu_title"), required(c, "menu_help"),
              {required(c, "resume"), required(c, "exit"), required(c, "reduce_motion")},
-             {required(c, "off"), required(c, "on")}, required(c, "step_separator")},
+             {required(c, "off"), required(c, "on")}, required(c, "step_separator"),
+             c.at("probe_results").get<std::array<std::string, 6>>(),
+             c.at("depth_buttons").get<std::array<std::string, 2>>(),
+             c.at("motion_buttons").get<std::array<std::string, 2>>() },
             {}
         };
         if (c.at("dither_modes").size() != content.controls.ditherModes.size() ||
@@ -81,7 +87,7 @@ Content loadContent(std::string_view text)
                 entry.at("instructions").get<std::vector<std::string>>(),
                 required(entry, "should_see"), required(entry, "bad_example"),
                 required(entry, "question"), entry.at("answers").get<std::vector<std::string>>(),
-                patternFrom(required(entry, "pattern")), entry.at("pattern_label").get<std::string>(), {}, {}
+                patternFrom(required(entry, "pattern")), entry.at("pattern_label").get<std::string>(), {}, {}, {}
             };
             if (!ids.insert(screen.id).second || screen.instructions.empty() ||
                 !allNonempty(screen.instructions) || screen.answers.size() < 2 ||
@@ -109,6 +115,14 @@ Content loadContent(std::string_view text)
                     screen.settings.push_back(std::move(setting));
                 }
             }
+            if (entry.contains("result_hints")) {
+                screen.resultHints = entry.at("result_hints").get<decltype(screen.resultHints)>();
+                if (!std::ranges::all_of(screen.resultHints, [&](const auto& hints) {
+                    return hints.size() == screen.answers.size() && allNonempty(hints);
+                })) {
+                    throw std::runtime_error("Invalid result hints for " + screen.id);
+                }
+            }
             content.screens.push_back(std::move(screen));
         }
         return content;
@@ -121,9 +135,41 @@ Session::Session(const Content& content) : content_(content), answers_(content.s
 {
 }
 
+namespace {
+bool laterBandingPart(Pattern pattern)
+{
+    return pattern == Pattern::bandingSplit || pattern == Pattern::bandingDepth ||
+           pattern == Pattern::bandingDark;
+}
+} // namespace
+
+std::size_t Session::step() const
+{
+    return static_cast<std::size_t>(std::count_if(content_.screens.begin(),
+        content_.screens.begin() + index_ + 1, [](const Screen& value) {
+            return !laterBandingPart(value.pattern);
+        }));
+}
+
+std::size_t Session::stepCount() const
+{
+    return static_cast<std::size_t>(std::ranges::count_if(content_.screens, [](const Screen& value) {
+        return !laterBandingPart(value.pattern);
+    }));
+}
+
+std::string_view Session::resultHint() const
+{
+    if (screen().pattern == Pattern::bandingDepth) {
+        return controls().probeResults[static_cast<std::size_t>(probe_.result(answer()))];
+    }
+    const auto& hints = screen().resultHints[displayType_];
+    return answer() && !hints.empty() ? std::string_view{hints[*answer()]} : std::string_view{};
+}
+
 patterns::Dither Session::dither() const
 {
-    return screen().pattern == Pattern::ramp ? previewDither_ : patterns::Dither::off;
+    return screen().pattern == Pattern::bandingSplit ? previewDither_ : patterns::Dither::off;
 }
 
 std::size_t Session::setting(Setting kind) const
@@ -151,9 +197,15 @@ void Session::cycleSetting(std::size_t localIndex, int direction)
     }
 }
 
+void Session::resetProbe()
+{
+    probe_.reset();
+    if (screen().pattern == Pattern::bandingDepth) answers_[index_].reset();
+}
+
 void Session::selectAnswer(std::size_t answer)
 {
-    if (!menuOpen_ && answer < screen().answers.size()) {
+    if (!menuOpen_ && canAnswer() && answer < screen().answers.size()) {
         answers_[index_] = answer;
     }
 }
@@ -196,16 +248,19 @@ bool Session::handle(Input input)
     case Input::previous:
         if (canGoBack()) {
             --index_;
+            if (screen().pattern == Pattern::bandingDepth) { tenBit_ = false; resetProbe(); }
         }
         break;
     case Input::next:
     case Input::confirm:
         if (canGoNext()) {
             ++index_;
+            if (screen().pattern == Pattern::bandingDepth) { tenBit_ = false; resetProbe(); }
         }
         break;
     case Input::up:
     case Input::down: {
+        if (!canAnswer()) break;
         const auto last = screen().answers.size() - 1;
         auto& choice = answers_[index_];
         if (!choice) {
@@ -217,10 +272,16 @@ bool Session::handle(Input input)
         break;
     }
     case Input::dither:
-        if (screen().pattern == Pattern::ramp) {
-            const auto next = (static_cast<std::size_t>(previewDither_) + 1) % controls().ditherModes.size();
+        if (screen().pattern == Pattern::bandingSplit) {
+            const auto next = static_cast<std::size_t>(previewDither_) % 3 + 1;
             previewDither_ = static_cast<patterns::Dither>(next);
         }
+        break;
+    case Input::bitDepth:
+        if (screen().pattern == Pattern::bandingDepth && probe_.available()) tenBit_ = !tenBit_;
+        break;
+    case Input::movePattern:
+        if (screen().pattern == Pattern::bandingDark) moving_ = !moving_;
         break;
     default:
         break;

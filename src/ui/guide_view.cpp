@@ -116,7 +116,7 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
                                  vk::QuadPipeline ramp, VkExtent2D extent,
                                  patterns::OutputDepth depth, const guide::Session& session,
                                  std::span<const std::string_view> status, const Pointer& pointer,
-                                 bool pointerVisible, float motion)
+                                 bool pointerVisible, float motion, float patternPhase)
 {
     const auto& screen = session.screen();
     const auto& controls = session.controls();
@@ -132,6 +132,9 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
     const bool showRamp = screen.pattern != guide::Pattern::none && !menu;
 
     std::string dither;
+    const bool split = screen.pattern == guide::Pattern::bandingSplit;
+    const bool compare = screen.pattern == guide::Pattern::bandingDepth;
+    const bool dark = screen.pattern == guide::Pattern::bandingDark;
     std::vector<Button> settings;
     const std::string step = std::to_string(session.step()) + controls.stepSeparator +
                              std::to_string(session.stepCount());
@@ -177,14 +180,26 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
             top.push_back(screen.patternLabel);
         }
         top.push_back(screen.badExample);
+        if (split) {
+            settings.push_back({{Command::dither},
+                controls.ditherLabel + ": " + controls.ditherModes[static_cast<std::size_t>(session.dither())]});
+        } else if (compare) {
+            settings.push_back({{Command::bitDepth}, controls.depthButtons[session.wantsTenBit() ? 1 : 0],
+                                session.probe().available()});
+        } else if (dark) {
+            settings.push_back({{Command::movePattern}, controls.motionButtons[session.movingPattern() ? 1 : 0]});
+        }
+        if (const auto hint = session.resultHint(); !hint.empty()) {
+            question.push_back(hint);
+        }
 
-        question = {screen.question};
+        question.insert(question.begin(), screen.question);
         shortcuts = {controls.answer, controls.navigation, screen.pattern == guide::Pattern::ramp ? controls.preview : controls.intro};
         for (std::size_t i = 0; i < screen.answers.size(); ++i) {
             const bool selected = session.answer() == i;
             const auto marker = selected ? "[x] " : "[ ] ";
             choices.push_back({{Command::answer, i},
-                std::to_string(i + 1) + " " + marker + screen.answers[i], true, selected});
+                std::to_string(i + 1) + " " + marker + screen.answers[i], session.canAnswer(), selected});
         }
         navigation = {
             {{Command::back}, controls.navigationButtons[0], session.canGoBack()},
@@ -199,12 +214,19 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
     auto navRow = layoutButtons(navigation, innerWidth, minButtonHeight, scale, gap);
     const auto questionLines = wrapText(question, columns);
     auto shortcutLines = wrapText(shortcuts, columns);
-    const auto topLines = wrapText(top, columns);
+    auto topLines = wrapText(top, columns);
     const auto statusLines = wrapText(status, columns);
-    const auto questionHeight = questionLines.empty() ? 0 : panelHeight(questionLines.size(), scale) + gap;
-    const auto topHeight = panelHeight(topLines.size(), scale);
+    std::size_t questionRows = questionLines.size();
+    if (compare && !menu) {
+        for (const auto& result : controls.probeResults) {
+            const std::array<std::string_view, 2> copy{screen.question, result};
+            questionRows = std::max(questionRows, wrapText(copy, columns).size());
+        }
+    }
+    const auto questionHeight = questionRows == 0 ? 0 : panelHeight(questionRows, scale) + gap;
+    auto topHeight = panelHeight(topLines.size(), scale);
     const auto statusHeight = statusLines.empty() ? 0 : panelHeight(statusLines.size(), scale) + margin;
-    const auto middleTop = margin + topHeight + statusHeight + margin + progressHeight;
+    auto middleTop = margin + topHeight + statusHeight + margin + progressHeight;
     const auto actionHeight = settingsHeight + questionHeight + choiceRow.height + (navRow.height ? gap + navRow.height : 0);
     const auto helpHeight = shortcutLines.empty() ? 0 : gap + panelHeight(shortcutLines.size(), scale);
     int bottomTop = height - margin - actionHeight - helpHeight;
@@ -213,6 +235,24 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
     if (bottomTop - margin - middleTop < (showRamp ? 24 : 0)) {
         bottomTop += helpHeight;
         shortcutLines.clear();
+    }
+    if (!menu && bottomTop - margin - middleTop < (showRamp ? 24 : 0)) {
+        // Keep the test usable in a short mode. Prioritize the title, code labels,
+        // first instruction and expected result before supplementary copy.
+        const int available = bottomTop - 3 * margin - statusHeight - progressHeight -
+                              (showRamp ? 24 : 0);
+        const int maxRows = (available / scale - 2 * theme::spacing) / theme::baseline;
+        if (maxRows > 0) {
+            std::vector<std::string_view> compact{screen.headline, step, screen.patternLabel,
+                screen.instructions.front(), screen.shouldSee, screen.badExample};
+            compact.insert(compact.end(), screen.instructions.begin() + 1, screen.instructions.end());
+            topLines = wrapText(compact, columns);
+            if (topLines.size() > static_cast<std::size_t>(maxRows)) {
+                topLines.resize(static_cast<std::size_t>(maxRows));
+            }
+            topHeight = panelHeight(topLines.size(), scale);
+            middleTop = margin + topHeight + statusHeight + margin + progressHeight;
+        }
     }
     const int middleHeight = bottomTop - margin - middleTop;
     std::vector<HitTarget> targets;
@@ -250,7 +290,23 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
             drawShape(command, overlay, extent, vkRect({margin, trackY, filled, 3 * scale}),
                       theme::accent, theme::radius);
         }
-        if (showRamp) {
+        if (showRamp && (split || compare || dark)) {
+            const Rect region{margin, middleTop, innerWidth, middleHeight};
+            std::uint32_t splitColumn = 0;
+            if (split) {
+                const int dividerX = static_cast<int>(session.divider().coordinate(region, dividerMinimumPane));
+                splitColumn = static_cast<std::uint32_t>(dividerX - region.x);
+                const int handleSize = std::min(8, margin);
+                drawShape(command, overlay, extent,
+                          vkRect({dividerX - handleSize, middleTop - handleSize, 2 * handleSize, handleSize}),
+                          theme::accent, static_cast<float>(handleSize) / 2);
+                targets.push_back({region, {Command::divider}, false});
+            } else if (compare) {
+                targets.push_back({region, {Command::probeRegion}, false});
+            }
+            patterns::drawRamp(command, ramp, extent, vkRect(region), depth, session.dither(),
+                               false, screen.pattern, splitColumn, patternPhase);
+        } else if (showRamp) {
             const int thumbnailWidth = innerWidth / 4;
             const int rampWidth = innerWidth - thumbnailWidth - margin;
             const auto gamma = static_cast<std::uint32_t>(session.setting(guide::Setting::gamma));

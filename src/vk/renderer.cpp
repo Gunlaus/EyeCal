@@ -69,7 +69,12 @@ bool needsRebuild(VkResult result)
 
 std::string_view formatName(VkFormat format)
 {
-    return format == VK_FORMAT_B8G8R8A8_UNORM ? "B8G8R8A8_UNORM" : "R8G8B8A8_UNORM";
+    switch (format) {
+    case VK_FORMAT_A2B10G10R10_UNORM_PACK32: return "A2B10G10R10_UNORM_PACK32";
+    case VK_FORMAT_A2R10G10B10_UNORM_PACK32: return "A2R10G10B10_UNORM_PACK32";
+    case VK_FORMAT_B8G8R8A8_UNORM: return "B8G8R8A8_UNORM";
+    default: return "R8G8B8A8_UNORM";
+    }
 }
 
 std::string_view colorStatus(platform::OutputColor state)
@@ -259,7 +264,12 @@ void Renderer::dropSwapchain()
     rebuild_ = true;
 }
 
-bool Renderer::buildSwapchain(bool exclusiveRequested)
+bool Renderer::activeTenBit() const
+{
+    return isTenBitFormat(format_);
+}
+
+bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
 {
     int width = 0;
     int height = 0;
@@ -284,8 +294,9 @@ bool Renderer::buildSwapchain(bool exclusiveRequested)
     const auto formats = list<VkSurfaceFormatKHR>([&](auto* size, auto* items) {
         return vkGetPhysicalDeviceSurfaceFormatsKHR(physical_, surface_, size, items);
     });
-    const auto format = chooseSurfaceFormat(formats);
-    if (!format) {
+    const auto eightBit = chooseSurfaceFormat(formats);
+    const auto tenBit = chooseTenBitFormat(formats);
+    if (!eightBit) {
         throw std::runtime_error("The current surface has no supported SDR UNORM format.");
     }
 
@@ -304,8 +315,9 @@ bool Renderer::buildSwapchain(bool exclusiveRequested)
     info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     info.surface = surface_;
     info.minImageCount = chooseImageCount(caps);
-    info.imageFormat = format->format;
-    info.imageColorSpace = format->colorSpace;
+    const auto format = requestTenBit && tenBit ? *tenBit : *eightBit;
+    info.imageFormat = format.format;
+    info.imageColorSpace = format.colorSpace;
     info.imageExtent = *extent;
     info.imageArrayLayers = 1;
     info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -314,15 +326,27 @@ bool Renderer::buildSwapchain(bool exclusiveRequested)
     info.compositeAlpha = *alpha;
     info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     info.clipped = VK_TRUE;
-    const auto created = platform::createSwapchain(window_, physical_, device_, info,
-                                                   exclusiveRequested, exclusiveEnabled_, swapchain_);
+    auto create = [&] {
+        return platform::createSwapchain(window_, physical_, device_, info, exclusiveRequested,
+                                         exclusiveEnabled_, swapchain_);
+    };
+    supportsTenBit_ = tenBit.has_value();
+    auto created = create();
+    if (isTenBitFormat(info.imageFormat) && (created.result == VK_ERROR_FORMAT_NOT_SUPPORTED ||
+                                           created.result == VK_ERROR_INITIALIZATION_FAILED)) {
+        supportsTenBit_ = false;
+        info.imageFormat = eightBit->format;
+        info.imageColorSpace = eightBit->colorSpace;
+        created = create();
+    }
     if (needsRebuild(created.result)) {
         return false;
     }
     check(created.result, "Create UNORM swapchain");
     exclusiveAcquired_ = created.exclusive;
     extent_ = *extent;
-    format_ = format->format;
+    format_ = info.imageFormat;
+    previousDepthRequest_ = requestTenBit;
     images_ = list<VkImage>([&](auto* size, auto* items) {
         return vkGetSwapchainImagesKHR(device_, swapchain_, size, items);
     });
@@ -400,9 +424,10 @@ std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& fr
     }
     std::vector<ui::HitTarget> targets;
     if (frame.licensePage.empty()) {
-        targets = ui::drawGuide(command_, overlay_, ramp_, extent_, patterns::OutputDepth::unorm8,
+        const auto depth = activeTenBit() ? patterns::OutputDepth::unorm10 : patterns::OutputDepth::unorm8;
+        targets = ui::drawGuide(command_, overlay_, ramp_, extent_, depth,
                                 frame.guide, std::span{lines}.first(lineCount), frame.pointer,
-                                frame.pointerVisible, frame.chromeMotion);
+                                frame.pointerVisible, frame.chromeMotion, frame.patternPhase);
     } else {
         std::vector<std::string_view> page(frame.licensePage.begin(), frame.licensePage.end());
         if (frame.outputColor == platform::OutputColor::hdr) {
@@ -429,7 +454,9 @@ bool Renderer::draw(const Frame& frame, std::vector<ui::HitTarget>& targets)
     if (SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED) {
         return false;
     }
-    if (rebuild_ && !buildSwapchain(frame.exclusiveRequested && frame.focused)) {
+    const bool requestTenBit = frame.guide.wantsTenBit();
+    if ((rebuild_ || previousDepthRequest_ != requestTenBit) &&
+        !buildSwapchain(frame.exclusiveRequested && frame.focused, requestTenBit)) {
         return false;
     }
     check(vkWaitForFences(device_, 1, &frameFence_, VK_TRUE, UINT64_MAX), "Wait for previous frame");
