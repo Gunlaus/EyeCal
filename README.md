@@ -6,9 +6,9 @@ Can you make out the darkest step? Do the brightest whites still look distinct? 
 
 EyeCal is designed for people without a colorimeter. Measuring color accuracy still requires a meter.
 
-> **Project status · Milestone 2**
+> **Project status · Milestone 3**
 >
-> `EyeCal.exe` opens an SDR setup checklist and a grey-ramp preview. The preview compares the main ramp with deliberately coarse bands and lets you try four dither modes. The full calibration walkthrough is planned for later milestones.
+> `EyeCal.exe` guides you through SDR setup, RGB range, brightness, white clipping, gamma, and sharpness. Each test shows a procedural example of what a bad result looks like.
 
 ## Try the Windows prototype
 
@@ -21,18 +21,17 @@ You’ll need Windows 10 or 11 and a Vulkan 1.3 graphics driver. Set Windows to 
 | **F2** | Read the bundled licenses. Use **Page Up** and **Page Down** to move between pages |
 | **Left / Right**, **Enter** | Go back or forward through the guide |
 | **Up / Down** | Choose an answer or menu item |
-| **D** | Cycle dithering on the ramp preview |
 | **F3** | Cycle text sizes |
 | **Esc** | Open the menu to resume or exit |
 
 The same actions are available in the on-screen Back, Next, and Menu buttons. Click a choice or press its number to answer. Scroll down to advance, scroll up or right-click to go back. Move the mouse to reveal the cursor. It hides after two seconds of inactivity and stays visible on the menu. Tab and Shift+Tab move between available buttons, and Enter activates the focused button.
 
-## What’s planned
+## Calibration checks
 
 - **Set black and white levels.** Find crushed shadows, clipped highlights, and full-range versus limited-range mismatches.
 - **Tune gamma and sharpness.** Compare small checkerboards with solid greys, then use fine lines to spot blur, halos, and overscan.
-- **Investigate banding.** Compare ramps with and without dithering, switch between 8-bit and 10-bit paths where supported, and check whether banding is concentrated in the shadows.
-- **Check uniformity.** Use flat fields to look for uneven brightness and bad pixels, then save a plain-text summary.
+- **Planned: investigate banding.** Compare ramps with and without dithering, switch between 8-bit and 10-bit paths where supported, and check whether banding is concentrated in the shadows.
+- **Planned: check uniformity.** Use flat fields to look for uneven brightness and bad pixels, then save a plain-text summary.
 
 ## Build from source
 

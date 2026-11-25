@@ -49,3 +49,7 @@ The cursor uses a steady-clock deadline two seconds after the latest movement. T
 A central theme defines the neutral surfaces, blue accent, spacing, corners and typography. Shaders draw anti-aliased panels and icons in the existing Vulkan UI pass. Text uses the embedded Geist Mono signed-distance atlas. The progress bar and controls occupy the reserved UI bands. The thumbnail frame is outside the thumbnail pixels. Text and pattern draws have separate scissors.
 
 The dark chrome limits how much the UI contributes to average picture level. Using large bright UI surfaces can affect display brightness on devices with automatic picture adjustments. EyeCal uses low-luminance fills, with foreground text contrast of at least 7:1 for the specified colour pairs, computed in sRGB. The effect on a physical display needs checking. The 180 ms eased response is limited to screens with no visible test pattern. Reduce motion is available in the menu and lasts for the session.
+
+## M3 calibration screens
+
+The setup stores display category and panel type as session choices. The per-display hint is selected from the English locale. Gamma defaults to sRGB for monitors, BT.1886 for TVs, and 2.2 for projectors. A manual gamma selection overrides the default. Click a setting or focus it with Tab and press Enter to cycle it. Each test and its intentionally wrong thumbnail use the same procedural shader and quantization path. The sharpness screen's separate scanout-edge markers are drawn in the outer margins.

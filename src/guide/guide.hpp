@@ -11,7 +11,15 @@
 
 namespace calib::guide {
 
-enum class Pattern { none, ramp };
+enum class Pattern { none, ramp, setup, levels, black, white, gamma, sharpness };
+enum class Setting { display, panel, gamma };
+
+struct ChoiceSetting {
+    Setting kind;
+    std::string label;
+    std::vector<std::string> options;
+    std::vector<std::string> descriptions;
+};
 
 struct Screen {
     std::string id;
@@ -23,6 +31,8 @@ struct Screen {
     std::vector<std::string> answers;
     Pattern pattern;
     std::string patternLabel;
+    std::vector<ChoiceSetting> settings;
+    std::vector<std::string> displayHints;
 };
 
 struct Controls {
@@ -56,6 +66,8 @@ public:
 
     // A true result asks the application to exit.
     bool handle(Input input);
+    std::size_t setting(Setting kind) const;
+    void cycleSetting(std::size_t localIndex, int direction = 1);
     void selectAnswer(std::size_t answer);
     bool activateMenuChoice(std::size_t choice);
     bool canGoBack() const { return index_ > 0; }
@@ -79,6 +91,9 @@ private:
     std::size_t menuChoice_ = 0;
     bool menuOpen_ = false;
     bool reduceMotion_ = false;
+    std::size_t displayType_ = 0;
+    std::size_t panelType_ = 0;
+    std::optional<std::size_t> gamma_;
     patterns::Dither previewDither_ = patterns::Dither::off;
     int textScale_ = 1;
 };

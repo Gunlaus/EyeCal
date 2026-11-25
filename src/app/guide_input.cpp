@@ -93,6 +93,10 @@ bool GuideInput::activate(Action action)
     case Command::answer:
         session_.selectAnswer(action.index);
         return false;
+    case Command::setting:
+        session_.cycleSetting(action.index);
+        invalidateTargets();
+        return false;
     case Command::menuChoice:
         invalidateTargets();
         return session_.activateMenuChoice(action.index);

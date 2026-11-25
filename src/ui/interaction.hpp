@@ -20,7 +20,7 @@ struct Rect {
     bool contains(Point point) const;
 };
 
-enum class Command { back, next, menu, answer, menuChoice };
+enum class Command { back, next, menu, answer, menuChoice, setting };
 
 struct Action {
     Command command;

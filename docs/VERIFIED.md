@@ -42,3 +42,5 @@ For swapchain teardown on the baseline Vulkan path, M1 uses device idle, the con
 ## UI brightness on the physical display
 
 **UNVERIFIED on device.** EyeCal's dark UI lowers its own encoded background values. Whether a given OLED, projector or TV changes brightness during screen transitions depends on the display and settings. Check for visible shifts on a real display. [On-device checklist](ON_DEVICE_CHECKLIST.md#visual-chrome)
+
+**VERIFIED signal conventions.** Microsoft defines full-range 8-bit code values as 0–255 and conventional limited range as 16–235. EyeCal draws exact RGB code values into its 8-bit UNORM attachment. Actual device range, panel scaling and visibility of individual steps remain unverified on device. [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange)

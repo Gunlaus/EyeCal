@@ -129,9 +129,10 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
     const int columns = panelColumns(innerWidth, scale);
     const int minButtonHeight = (height * 6 + 99) / 100;
     const bool menu = session.menuOpen();
-    const bool showRamp = screen.pattern == guide::Pattern::ramp && !menu;
+    const bool showRamp = screen.pattern != guide::Pattern::none && !menu;
 
     std::string dither;
+    std::vector<Button> settings;
     const std::string step = std::to_string(session.step()) + controls.stepSeparator +
                              std::to_string(session.stepCount());
     const int progressHeight = menu ? 0 : 3 * scale + gap;
@@ -156,16 +157,29 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
         for (const auto& item : screen.instructions) {
             top.push_back(item);
         }
+        if (!screen.displayHints.empty()) {
+            top.push_back(screen.displayHints[session.setting(guide::Setting::display)]);
+        }
+        for (std::size_t i = 0; i < screen.settings.size(); ++i) {
+            const auto& setting = screen.settings[i];
+            const auto selected = session.setting(setting.kind);
+            settings.push_back({{Command::setting, i}, setting.label + ": " + setting.options[selected]});
+            if (!setting.descriptions.empty()) {
+                top.push_back(setting.descriptions[selected]);
+            }
+        }
         top.push_back(screen.shouldSee);
-        if (showRamp) {
+        if (screen.pattern == guide::Pattern::ramp) {
             dither = screen.patternLabel + "   " + controls.ditherLabel + ": " +
                      controls.ditherModes[static_cast<std::size_t>(session.dither())];
             top.push_back(dither);
+        } else if (showRamp) {
+            top.push_back(screen.patternLabel);
         }
         top.push_back(screen.badExample);
 
         question = {screen.question};
-        shortcuts = {controls.answer, controls.navigation, showRamp ? controls.preview : controls.intro};
+        shortcuts = {controls.answer, controls.navigation, screen.pattern == guide::Pattern::ramp ? controls.preview : controls.intro};
         for (std::size_t i = 0; i < screen.answers.size(); ++i) {
             const bool selected = session.answer() == i;
             const auto marker = selected ? "[x] " : "[ ] ";
@@ -179,6 +193,8 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
         };
     }
 
+    auto settingRow = layoutButtons(settings, innerWidth, minButtonHeight, scale, gap);
+    const int settingsHeight = settingRow.height ? settingRow.height + gap : 0;
     auto choiceRow = layoutButtons(choices, innerWidth, minButtonHeight, scale, gap);
     auto navRow = layoutButtons(navigation, innerWidth, minButtonHeight, scale, gap);
     const auto questionLines = wrapText(question, columns);
@@ -189,7 +205,7 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
     const auto topHeight = panelHeight(topLines.size(), scale);
     const auto statusHeight = statusLines.empty() ? 0 : panelHeight(statusLines.size(), scale) + margin;
     const auto middleTop = margin + topHeight + statusHeight + margin + progressHeight;
-    const auto actionHeight = questionHeight + choiceRow.height + (navRow.height ? gap + navRow.height : 0);
+    const auto actionHeight = settingsHeight + questionHeight + choiceRow.height + (navRow.height ? gap + navRow.height : 0);
     const auto helpHeight = shortcutLines.empty() ? 0 : gap + panelHeight(shortcutLines.size(), scale);
     int bottomTop = height - margin - actionHeight - helpHeight;
     // Keep controls and the pattern reachable at small resolutions. The keyboard help remains
@@ -237,9 +253,19 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
         if (showRamp) {
             const int thumbnailWidth = innerWidth / 4;
             const int rampWidth = innerWidth - thumbnailWidth - margin;
+            const auto gamma = static_cast<std::uint32_t>(session.setting(guide::Setting::gamma));
             patterns::drawRamp(command, ramp, extent,
                                vkRect({margin, middleTop, rampWidth, middleHeight}),
-                               depth, session.dither(), false);
+                               depth, session.dither(), false, screen.pattern, gamma);
+            if (screen.pattern == guide::Pattern::sharpness) {
+                for (const auto marker : {
+                    Rect{width / 2 - 12, 0, 24, 1}, Rect{width / 2 - 12, height - 1, 24, 1},
+                    Rect{0, height / 2 - 12, 1, 24}, Rect{width - 1, height / 2 - 12, 1, 24}
+                }) {
+                    patterns::drawRamp(command, ramp, extent, vkRect(marker), depth,
+                                       patterns::Dither::off, false, screen.pattern);
+                }
+            }
             const int thumbnailX = margin * 2 + rampWidth;
             const int border = std::min(2 * scale, gap);
             for (const auto edge : {
@@ -252,19 +278,21 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
             }
             patterns::drawRamp(command, ramp, extent,
                                vkRect({thumbnailX, middleTop, thumbnailWidth, middleHeight}),
-                               depth, patterns::Dither::off, true);
+                               depth, patterns::Dither::off, true, screen.pattern, gamma);
         }
     }
 
+    place(settingRow, margin, bottomTop, targets);
     if (!questionLines.empty()) {
         drawTextPanel(command, overlay, extent,
-                      vkRect({margin, bottomTop, innerWidth, questionHeight - gap}),
+                      vkRect({margin, bottomTop + settingsHeight, innerWidth, questionHeight - gap}),
                       questionLines, scale);
     }
-    const int choiceTop = bottomTop + questionHeight;
+    const int choiceTop = bottomTop + settingsHeight + questionHeight;
     place(choiceRow, margin, choiceTop, targets);
     place(navRow, margin, choiceTop + choiceRow.height + gap, targets);
     const auto hovered = pointerVisible || pointer.pressed() ? pointer.hovered(targets) : std::nullopt;
+    drawButtons(command, overlay, extent, settings, settingRow, scale, pointer, hovered, motion);
     drawButtons(command, overlay, extent, choices, choiceRow, scale, pointer, hovered, motion);
     drawButtons(command, overlay, extent, navigation, navRow, scale, pointer, hovered, motion);
     if (!shortcutLines.empty()) {

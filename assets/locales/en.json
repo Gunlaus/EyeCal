@@ -8,7 +8,12 @@
     "preview": "D Change dither   F3 Text size   F1 Diagnostics",
     "intro": "F3 Text size   F1 Diagnostics",
     "dither_label": "Dither",
-    "dither_modes": ["Off", "Ordered", "Blue noise", "TPDF"],
+    "dither_modes": [
+      "Off",
+      "Ordered",
+      "Blue noise",
+      "TPDF"
+    ],
     "text_overflow": "Text too large here. Press F3.",
     "menu_title": "EyeCal menu",
     "menu_help": "Click or Up / Down   Enter Confirm   Esc Resume",
@@ -25,29 +30,151 @@
       "headline": "Set up your display for SDR",
       "instructions": [
         "Turn off HDR and auto colour management in Windows display settings.",
-        "Set the display to its recommended resolution. Dim the room and sit where you normally watch.",
-        "Use a neutral picture mode and turn off dynamic contrast, motion smoothing, and edge enhancement.",
-        "EyeCal checks display settings by eye. A meter is needed to measure colour accuracy."
+        "Dim the room and sit where you normally watch. Use the display's recommended resolution.",
+        "Turn off Game, Vivid and Dynamic modes, motion smoothing and contrast enhancers.",
+        "EyeCal checks SDR by eye. A meter is needed to measure colour accuracy."
       ],
-      "should_see": "You should see a neutral picture whose brightness stays steady.",
-      "bad_example": "A bad starting point: the picture changes brightness or colour on its own.",
-      "question": "Ready to try the rendering preview?",
-      "answers": ["Ready", "Still setting up"],
-      "pattern": "none",
-      "pattern_label": ""
+      "should_see": "You should see four evenly progressing grey patches.",
+      "bad_example": "Bad example: two grey patches merge.",
+      "question": "Ready to check your display?",
+      "answers": [
+        "Ready",
+        "Still setting up"
+      ],
+      "pattern": "setup",
+      "pattern_label": "Setup swatches",
+      "settings": [
+        {
+          "id": "display",
+          "label": "Display",
+          "options": [
+            "Monitor",
+            "TV",
+            "Projector"
+          ]
+        },
+        {
+          "id": "panel",
+          "label": "Panel",
+          "options": [
+            "LCD",
+            "OLED",
+            "Other"
+          ]
+        }
+      ]
     },
     {
-      "id": "preview",
-      "headline": "Look for steps in the grey ramp",
+      "id": "levels",
+      "headline": "Check the RGB range",
       "instructions": [
-        "This preview is for checking the renderer. A meter is needed to measure colour accuracy."
+        "Compare the dark top row and bright bottom row. Match the source and display RGB range."
       ],
-      "should_see": "You should see grey brighten smoothly from black to white.",
-      "bad_example": "Bad example: eight broad stripes.",
-      "question": "Does the main ramp look smooth?",
-      "answers": ["Mostly smooth", "Visible steps", "Unsure"],
-      "pattern": "ramp",
-      "pattern_label": "Grey ramp"
+      "should_see": "You should see steps in both rows, although the first dark steps can be subtle.",
+      "bad_example": "Bad example: dark and bright steps are crushed.",
+      "question": "How do the two rows look?",
+      "answers": [
+        "Both show steps",
+        "Crushed or clipped",
+        "Black looks washed out"
+      ],
+      "pattern": "levels",
+      "pattern_label": "Top: 0 1 2 3 4 5 6 7 8   Bottom: 247 248 249 250 251 252 253 254 255",
+      "display_hints": [
+        "Look for RGB range in your GPU control panel.",
+        "Look for HDMI Black Level or RGB Range on the TV, then match the GPU control panel.",
+        "Look for an RGB range or HDMI black-level option on the projector. Match the GPU setting."
+      ]
+    },
+    {
+      "id": "black",
+      "headline": "Adjust brightness for shadow detail",
+      "instructions": [
+        "Use the display's black-level or brightness control. Raise it until the darkest steps start to separate, then back off if black turns grey.",
+        "Full-range PC output starts at code 0. This pattern compares above-black steps against 0."
+      ],
+      "should_see": "You should see some above-black strips while the background stays black.",
+      "bad_example": "Bad example: the darkest strips disappear.",
+      "question": "How does the black level look?",
+      "answers": [
+        "About right",
+        "Too bright",
+        "Too dark"
+      ],
+      "pattern": "black",
+      "pattern_label": "Codes: 0 1 2 3 4 6 8 12 16 24",
+      "display_hints": [
+        "Use a neutral room and disable automatic contrast.",
+        "Try the display's black-level control. Keep local dimming and shadow enhancement consistent.",
+        "Dim the room first. Stray light can hide small differences near black."
+      ]
+    },
+    {
+      "id": "white",
+      "headline": "Lower contrast until the whites separate",
+      "instructions": [
+        "Lower the display contrast if the brightest steps merge into one white area."
+      ],
+      "should_see": "You should see small steps all the way to the brightest white.",
+      "bad_example": "Bad example: several top steps have merged.",
+      "question": "Can you separate the bright steps?",
+      "answers": [
+        "Yes",
+        "Some merge",
+        "Unsure"
+      ],
+      "pattern": "white",
+      "pattern_label": "Codes: 235 240 245 247 249 251 253 254 255"
+    },
+    {
+      "id": "gamma",
+      "headline": "Match the fine pattern to the solid grey",
+      "instructions": [
+        "Sit at your usual distance. If the checkerboard is visible, step back or squint slightly."
+      ],
+      "should_see": "You should see similar brightness in each top checker and the matching solid below.",
+      "bad_example": "Bad example: the solid patches are too light.",
+      "question": "How do the solid patches look?",
+      "answers": [
+        "Too light",
+        "About right",
+        "Too dark"
+      ],
+      "pattern": "gamma",
+      "pattern_label": "Left to right: 25%, 50%, 75% checker coverage",
+      "settings": [
+        {
+          "id": "gamma",
+          "label": "Target",
+          "options": [
+            "sRGB",
+            "2.2",
+            "BT.1886"
+          ],
+          "descriptions": [
+            "sRGB: the standard target for typical computer content.",
+            "2.2: a simple target for general viewing.",
+            "BT.1886: for dark-room TVs. This approximation assumes ideal black."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sharpness",
+      "headline": "Check clean edges and the whole border",
+      "instructions": [
+        "Reduce sharpening until the halos disappear. Disable overscan or select the display's 1:1 mode if the border is cropped."
+      ],
+      "should_see": "You should see crisp individual lines, one clean edge, four corners, and a mark on each screen edge.",
+      "bad_example": "Bad example: bright and dark halos hug the edge.",
+      "question": "How does the pattern look?",
+      "answers": [
+        "Clean and complete",
+        "Halos or blur",
+        "Border cropped"
+      ],
+      "pattern": "sharpness",
+      "pattern_label": "Single-pixel lines and corner markers"
     }
   ]
 }

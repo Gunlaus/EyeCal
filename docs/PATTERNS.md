@@ -22,3 +22,16 @@ The shader takes display-encoded values and computes `floor(value * maxCode + of
 See [the blue-noise asset origin and licence](../THIRD_PARTY.md) and [Ulichney’s void-and-cluster paper](https://doi.org/10.1117/12.152707).
 
 Levels, PLUGE-style black level, white clip, gamma, sharpness, banding, flat fields and the synthetic reference scene are scheduled for later milestones. Add exact code values, rationale and citations when introducing each pattern.
+
+## M3 calibration patterns
+
+All values below are 8-bit full-range RGB codes, with dither Off. A strip index is the integer floor of its horizontal pixel coordinate times the strip count divided by region width. Sources describe the signal conventions and transfer functions. The layouts are original.
+
+| Screen | Pixel values and rationale | Source |
+| --- | --- | --- |
+| 0. Setup | Four neutral vertical swatches at 48, 64, 80, 96. The bad thumbnail repeats 48. This checks visibility of a simple progression. | [Vulkan normalized fixed-point conversion](https://docs.vulkan.org/spec/latest/chapters/fundamentals.html#fundamentals-fixedfpconv) |
+| 1. Levels | Upper row 0–8 and lower row 247–255 inclusive. Bad example is 0 above and 255 below, illustrating clipping of extremes. | [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange) |
+| 2. Black | Centre half of region has codes 0, 1, 2, 3, 4, 6, 8, 12, 16, 24 over a code-0 surround. Bad example zeros values through 8. Full-range 8-bit RGB starts at 0, so the EyeCal PLUGE-style comparison uses reference black and above-black steps. | [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange) |
+| 3. White | Codes 235, 240, 245, 247, 249, 251, 253, 254, 255. Bad example sets every value from 247 onward to 255. | [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange) |
+| 4. Gamma | Three 2 × 2 tiles contain 1, 2 and 3 white pixels respectively, with codes 0 and 255. Solids are nearest codes to the inverse display transfer at linear fractions 0.25, 0.5 and 0.75. sRGB yields 137, 188, 225. Gamma 2.2 yields 136, 186, 224. Ideal-black BT.1886 yields 143, 191, 226. The bad example adds 0.14 encoded value before quantization, clamped to white. | [W3C sRGB transfer function](https://www.w3.org/TR/css-color-4/#color-conversion-code) · [ITU-R BT.1886](https://www.itu.int/rec/R-REC-BT.1886) |
+| 5. Sharpness | Alternating 64/192 single-pixel lines and a clean 64/192 edge. Border and outer-screen marks use code 224. Corner marks use 255. Bad example substitutes 16 and 240 in the two columns adjacent to the edge on each side. | [Vulkan fragment coordinates](https://docs.vulkan.org/refpages/latest/refpages/source/FragCoord.html) |
