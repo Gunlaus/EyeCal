@@ -48,7 +48,8 @@ Content loadContent(std::string_view text)
              required(c, "intro"), required(c, "dither_label"),
              c.at("dither_modes").get<std::array<std::string, 4>>(),
              required(c, "text_overflow"), required(c, "menu_title"), required(c, "menu_help"),
-             {required(c, "resume"), required(c, "exit")}},
+             {required(c, "resume"), required(c, "exit"), required(c, "reduce_motion")},
+             {required(c, "off"), required(c, "on")}, required(c, "step_separator")},
             {}
         };
         if (c.at("dither_modes").size() != content.controls.ditherModes.size() ||
@@ -104,6 +105,10 @@ bool Session::activateMenuChoice(std::size_t choice)
         return false;
     }
     menuChoice_ = choice;
+    if (choice == 2) {
+        reduceMotion_ = !reduceMotion_;
+        return false;
+    }
     menuOpen_ = false;
     return choice == 1;
 }
@@ -121,7 +126,8 @@ bool Session::handle(Input input)
     }
     if (menuOpen_) {
         if (input == Input::up || input == Input::down) {
-            menuChoice_ = menuChoice_ == 0 ? 1 : 0;
+            const auto count = controls().menuChoices.size();
+            menuChoice_ = (menuChoice_ + (input == Input::up ? count - 1 : 1)) % count;
         } else if (input == Input::confirm) {
             return activateMenuChoice(menuChoice_);
         }

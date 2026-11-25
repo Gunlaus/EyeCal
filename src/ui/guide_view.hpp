@@ -10,6 +10,6 @@ std::vector<HitTarget> drawGuide(VkCommandBuffer command, vk::QuadPipeline overl
                                  vk::QuadPipeline ramp, VkExtent2D extent,
                                  patterns::OutputDepth depth, const guide::Session& session,
                                  std::span<const std::string_view> status, const Pointer& pointer,
-                                 bool pointerVisible);
+                                 bool pointerVisible, float motion);
 
 } // namespace calib::ui

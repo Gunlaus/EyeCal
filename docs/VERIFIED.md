@@ -38,3 +38,7 @@ For swapchain teardown on the baseline Vulkan path, M1 uses device idle, the con
 **VERIFIED from SDL documentation.** SDL mouse motion and button positions are relative to the window. The window size in window coordinates and its size in pixels have separate queries. EyeCal converts positions by the ratio on each axis before testing Vulkan UI rectangles. SDL exposes whole-tick wheel deltas, reports a flipped scroll direction, and exposes cursor visibility through `SDL_ShowCursor` and `SDL_HideCursor`. [SDL mouse motion](https://wiki.libsdl.org/SDL3/SDL_MouseMotionEvent) · [SDL mouse buttons](https://wiki.libsdl.org/SDL3/SDL_MouseButtonEvent) · [SDL window pixel size](https://wiki.libsdl.org/SDL3/SDL_GetWindowSizeInPixels) · [SDL mouse wheel](https://wiki.libsdl.org/SDL3/SDL_MouseWheelEvent) · [SDL cursor visibility](https://wiki.libsdl.org/SDL3/SDL_HideCursor)
 
 **UNVERIFIED on device.** Pointer alignment across mixed-DPI monitors, cursor behavior during Windows fullscreen mode switches, and touchpad scroll behavior require hardware testing. [On-device checklist](ON_DEVICE_CHECKLIST.md#mouse-and-keyboard-controls)
+
+## UI brightness on the physical display
+
+**UNVERIFIED on device.** EyeCal's dark UI lowers its own encoded background values. Whether a given OLED, projector or TV changes brightness during screen transitions depends on the display and settings. Check for visible shifts on a real display. [On-device checklist](ON_DEVICE_CHECKLIST.md#visual-chrome)

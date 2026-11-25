@@ -43,3 +43,9 @@ The guide draws button rectangles and produces their hit map in the same layout 
 Buttons are placed in the reserved UI bands or on the menu, with a minimum height of six percent of the framebuffer and additional height for larger text. At small resolutions, shortcut text is dropped first. If the remaining layout cannot fit, the app asks the user to reduce the text size and leaves the pattern area clear.
 
 The cursor uses a steady-clock deadline two seconds after the latest movement. The menu and the screen with the `summary` ID pin it visible. SDL focus and cursor handling stay in the app layer. A CPU-only divider component tracks an axis, a normalized split and the pointer's grab offset. It constrains both panes to their minimum size. The banding comparison can use it when that screen is added.
+
+## Visual chrome
+
+A central theme defines the neutral surfaces, blue accent, spacing, corners and typography. Shaders draw anti-aliased panels and icons in the existing Vulkan UI pass. Text uses the embedded Geist Mono signed-distance atlas. The progress bar and controls occupy the reserved UI bands. The thumbnail frame is outside the thumbnail pixels. Text and pattern draws have separate scissors.
+
+The dark chrome limits how much the UI contributes to average picture level. Using large bright UI surfaces can affect display brightness on devices with automatic picture adjustments. EyeCal uses low-luminance fills, with foreground text contrast of at least 7:1 for the specified colour pairs, computed in sRGB. The effect on a physical display needs checking. The 180 ms eased response is limited to screens with no visible test pattern. Reduce motion is available in the menu and lasts for the session.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk/quad.hpp"
+#include "ui/theme.hpp"
 
 #include <array>
 #include <span>
@@ -13,11 +14,20 @@ vk::QuadPipeline createOverlay(VkDevice device, VkFormat format);
 std::vector<std::string_view> wrapText(std::span<const std::string_view> paragraphs, int columns);
 int panelHeight(std::size_t lines, int scale);
 int panelColumns(int width, int scale);
+enum class Icon { none, back, next, menu };
+
 struct PanelStyle {
-    std::array<float, 4> fill{0.025f, 0.025f, 0.025f, 1.0f};
-    std::array<float, 4> text{0.96f, 0.96f, 0.96f, 1.0f};
+    theme::Colour fill = theme::panel;
+    theme::Colour text = theme::text;
     bool centered = false;
+    bool heading = false;
+    float outline = 0.07f;
+    Icon icon = Icon::none;
 };
+
+void drawShape(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D extent,
+               VkRect2D rect, theme::Colour ink, float radius, float outline = 0.0f,
+               Icon icon = Icon::none);
 
 void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D extent,
                    VkRect2D panel, std::span<const std::string_view> lines, int scale,

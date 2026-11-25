@@ -43,3 +43,10 @@ Every item below needs on-device checking. The build and CPU tests provide no vi
 | 6d. Dark ramp | Compare near-black and mid-grey gradients with dark processing controls varied. Check the moving ramp for temporal artifacts. |
 | 7. Uniformity | Cycle every flat field and verify fullscreen coverage. Check for clouding, dirty-screen effect, vignetting and pixel defects. |
 | 8. Summary | Compare answers and statuses to the entered results. Inspect the synthetic shadow and highlight details and open the exported plain-text report. |
+
+## Visual chrome
+
+- [ ] Read the intro, menu and pattern controls from 3 m on a projector at each usable text size. Check focus, disabled buttons, captions, step count and progress.
+- [ ] Move between a brighter UI screen and a dark pattern screen. Check for a visible brightness shift on the display. Repeat on an OLED or projector with automatic brightness controls in its normal configuration.
+- [ ] Toggle Reduce motion and compare screen and menu transitions. Confirm hover and focus inside the bands remain instantaneous when a pattern is visible, and that no UI covers any pattern pixels.
+- [ ] Check the icon in Windows Explorer and the window title in task switching.

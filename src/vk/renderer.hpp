@@ -16,6 +16,7 @@ struct Frame {
     const guide::Session& guide;
     const ui::Pointer& pointer;
     bool pointerVisible;
+    float chromeMotion;
     bool diagnostics;
     bool exclusiveRequested;
     bool focused;

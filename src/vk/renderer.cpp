@@ -372,7 +372,7 @@ std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& fr
     target.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     target.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     target.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    target.clearValue.color = {{64.0f / 255.0f, 64.0f / 255.0f, 64.0f / 255.0f, 1.0f}};
+    std::copy(ui::theme::canvas.begin(), ui::theme::canvas.end(), target.clearValue.color.float32);
     VkRenderingInfo render{};
     render.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     render.renderArea = {{0, 0}, extent_};
@@ -402,7 +402,7 @@ std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& fr
     if (frame.licensePage.empty()) {
         targets = ui::drawGuide(command_, overlay_, ramp_, extent_, patterns::OutputDepth::unorm8,
                                 frame.guide, std::span{lines}.first(lineCount), frame.pointer,
-                                frame.pointerVisible);
+                                frame.pointerVisible, frame.chromeMotion);
     } else {
         std::vector<std::string_view> page(frame.licensePage.begin(), frame.licensePage.end());
         if (frame.outputColor == platform::OutputColor::hdr) {
