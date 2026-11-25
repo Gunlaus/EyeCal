@@ -102,23 +102,25 @@ TEST_CASE("Dither preserves exact endpoints and ramp spans every code in either 
 TEST_CASE("Embedded English text includes the display preparation and validates input")
 {
     const auto content = guide::loadContent(guide::englishJson);
-    REQUIRE(content.screens.size() == 2);
+    REQUIRE(content.screens.size() == 6);
     CHECK(content.screens.front().id == "intro");
     CHECK(content.screens.front().instructions.front().find("HDR and auto colour management")
           != std::string::npos);
-    CHECK(content.screens.back().pattern == guide::Pattern::ramp);
+    CHECK(content.screens.back().pattern == guide::Pattern::sharpness);
     CHECK_THROWS_AS(guide::loadContent("{"), std::runtime_error);
     CHECK_THROWS_AS(guide::loadContent("{}"), std::runtime_error);
 
     std::string duplicate(guide::englishJson);
-    duplicate.replace(duplicate.find("\"id\": \"preview\""), 15, "\"id\": \"intro\"");
+    duplicate.replace(duplicate.find("\"id\": \"levels\""), 14, "\"id\": \"intro\"");
     CHECK_THROWS_WITH(guide::loadContent(duplicate), "Load embedded en.json: Invalid screen data for intro");
 }
 
 TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent")
 {
     using guide::Input;
-    const auto content = guide::loadContent(guide::englishJson);
+    auto content = guide::loadContent(guide::englishJson);
+    content.screens.resize(2);
+    content.screens.back().pattern = guide::Pattern::ramp;
     guide::Session session(content);
     CHECK_FALSE(session.answer().has_value());
     CHECK_FALSE(session.handle(Input::previous));
@@ -128,7 +130,7 @@ TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent"
     CHECK_FALSE(session.handle(Input::down));
     CHECK(session.answer() == 0);
     CHECK_FALSE(session.handle(Input::confirm));
-    CHECK(session.screen().id == "preview");
+    CHECK(session.screen().id == "levels");
     CHECK_FALSE(session.answer().has_value());
     CHECK_FALSE(session.handle(Input::down));
     CHECK_FALSE(session.handle(Input::down));
@@ -139,7 +141,7 @@ TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent"
         CHECK(session.dither() == mode);
     }
     CHECK_FALSE(session.handle(Input::next));
-    CHECK(session.screen().id == "preview");
+    CHECK(session.screen().id == "levels");
     CHECK_FALSE(session.handle(Input::previous));
     CHECK(session.answer() == 0);
     CHECK_FALSE(session.handle(Input::next));
@@ -149,10 +151,27 @@ TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent"
     CHECK_FALSE(session.handle(Input::menu));
     CHECK(session.menuOpen());
     CHECK_FALSE(session.handle(Input::previous));
-    CHECK(session.screen().id == "preview");
+    CHECK(session.screen().id == "levels");
     CHECK_FALSE(session.handle(Input::confirm));
     CHECK_FALSE(session.menuOpen());
     CHECK_FALSE(session.handle(Input::menu));
     CHECK_FALSE(session.handle(Input::down));
     CHECK(session.handle(Input::confirm));
+}
+
+TEST_CASE("Display type supplies the gamma default until manually overridden")
+{
+    using namespace guide;
+    const auto content = loadContent(englishJson);
+    Session session(content);
+    CHECK(session.setting(Setting::gamma) == 0);
+    session.cycleSetting(0);
+    session.cycleSetting(1);
+    CHECK(session.setting(Setting::display) == 1);
+    CHECK(session.setting(Setting::panel) == 1);
+    CHECK(session.setting(Setting::gamma) == 2);
+    for (int i = 0; i < 4; ++i) session.handle(Input::next);
+    REQUIRE(session.screen().pattern == Pattern::gamma);
+    session.cycleSetting(0, -1);
+    CHECK(session.setting(Setting::gamma) == 1);
 }

@@ -27,16 +27,16 @@ Every item below needs on-device checking. The build and CPU tests provide no vi
 - [ ] Repeat at multiple F3 sizes and Windows DPI settings, in both fullscreen modes and after Alt-Tab or monitor changes. Confirm the hit areas match the visible buttons, and that controls never cover either ramp.
 - [ ] Try a physical wheel and a touchpad, including natural scrolling. Confirm the cursor returns normally when leaving the app.
 
-## Future calibration screens
+## Calibration screens
 
-| Screen | What to confirm on real hardware once implemented |
+| Screen | What to confirm on real hardware |
 | --- | --- |
 | 0. Intro | Read the checklist at normal viewing distance. Change display type and confirm the later hints and gamma default follow the selection. Verify the HDR warning and SDR guidance. |
 | 1. Levels | Deliberately mismatch full and limited RGB settings on a TV. Confirm the expected near-black and near-white steps disappear or look washed out and the hints identify the relevant controls. |
 | 2. Black level | Check near-black step visibility on full and limited output and confirm the instructions handle the absence of below-black headroom in full range. |
 | 3. White clip | Raise contrast until the brightest steps merge, then lower it until the top steps separate. |
-| 4. Gamma | Compare coarse and fine patch visibility at native resolution and normal viewing distance for all three targets. |
-| 5. Sharpness | Verify the 1px lines and border markers. Compare native and scaled modes, overscan off and on, and low and high edge enhancement. |
+| 4. Gamma | Check TV/monitor/projector defaults, select all three targets, compare tile and solid brightness, and confirm answers survive a round trip. |
+| 5. Sharpness | Verify the 1px lines, the four corner markers and the four physical screen-edge markers. Compare native and scaled modes, overscan off and on, and low and high edge enhancement. |
 | 6a. Baseline ramp | Compare the no-dither ramp on a known 8-bit output and confirm its appearance stays stable. |
 | 6b. Dither comparison | Move the divider and compare each dither algorithm against the same unchanged ramp. |
 | 6c. Bit-depth probe | Switch between 8- and 10-bit swapchains on capable hardware. Test unsupported hardware and the borderless inconclusive result. Verify the exclusive-only rule before comparing against known signal-chain settings. |

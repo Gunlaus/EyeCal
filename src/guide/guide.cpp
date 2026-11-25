@@ -27,7 +27,21 @@ Pattern patternFrom(std::string_view name)
     if (name == "ramp") {
         return Pattern::ramp;
     }
+    if (name == "setup") return Pattern::setup;
+    if (name == "levels") return Pattern::levels;
+    if (name == "black") return Pattern::black;
+    if (name == "white") return Pattern::white;
+    if (name == "gamma") return Pattern::gamma;
+    if (name == "sharpness") return Pattern::sharpness;
     throw std::runtime_error("Unknown guide pattern: " + std::string(name));
+}
+
+Setting settingFrom(std::string_view id)
+{
+    if (id == "display") return Setting::display;
+    if (id == "panel") return Setting::panel;
+    if (id == "gamma") return Setting::gamma;
+    throw std::runtime_error("Unknown guide setting: " + std::string(id));
 }
 
 bool allNonempty(const auto& strings)
@@ -67,13 +81,33 @@ Content loadContent(std::string_view text)
                 entry.at("instructions").get<std::vector<std::string>>(),
                 required(entry, "should_see"), required(entry, "bad_example"),
                 required(entry, "question"), entry.at("answers").get<std::vector<std::string>>(),
-                patternFrom(required(entry, "pattern")), entry.at("pattern_label").get<std::string>()
+                patternFrom(required(entry, "pattern")), entry.at("pattern_label").get<std::string>(), {}, {}
             };
             if (!ids.insert(screen.id).second || screen.instructions.empty() ||
                 !allNonempty(screen.instructions) || screen.answers.size() < 2 ||
                 !allNonempty(screen.answers) ||
                 (screen.pattern != Pattern::none && screen.patternLabel.empty())) {
                 throw std::runtime_error("Invalid screen data for " + screen.id);
+            }
+            if (entry.contains("display_hints")) {
+                screen.displayHints = entry.at("display_hints").get<std::vector<std::string>>();
+                if (screen.displayHints.size() != 3 || !allNonempty(screen.displayHints)) {
+                    throw std::runtime_error("Expected three display hints for " + screen.id);
+                }
+            }
+            if (entry.contains("settings")) {
+                for (const auto& value : entry.at("settings")) {
+                    ChoiceSetting setting{settingFrom(required(value, "id")), required(value, "label"),
+                                          value.at("options").get<std::vector<std::string>>(), {}};
+                    if (value.contains("descriptions")) {
+                        setting.descriptions = value.at("descriptions").get<std::vector<std::string>>();
+                    }
+                    if (setting.options.size() != 3 || !allNonempty(setting.options) ||
+                        (!setting.descriptions.empty() && setting.descriptions.size() != 3)) {
+                        throw std::runtime_error("Invalid setting options for " + screen.id);
+                    }
+                    screen.settings.push_back(std::move(setting));
+                }
             }
             content.screens.push_back(std::move(screen));
         }
@@ -90,6 +124,31 @@ Session::Session(const Content& content) : content_(content), answers_(content.s
 patterns::Dither Session::dither() const
 {
     return screen().pattern == Pattern::ramp ? previewDither_ : patterns::Dither::off;
+}
+
+std::size_t Session::setting(Setting kind) const
+{
+    switch (kind) {
+    case Setting::display: return displayType_;
+    case Setting::panel: return panelType_;
+    case Setting::gamma: return gamma_.value_or(displayType_ == 1 ? 2 : displayType_ == 2 ? 1 : 0);
+    }
+    return 0;
+}
+
+void Session::cycleSetting(std::size_t localIndex, int direction)
+{
+    if (menuOpen_ || localIndex >= screen().settings.size()) {
+        return;
+    }
+    const auto& options = screen().settings[localIndex];
+    const std::size_t count = options.options.size();
+    const auto next = (setting(options.kind) + (direction < 0 ? count - 1 : 1)) % count;
+    switch (options.kind) {
+    case Setting::display: displayType_ = next; break;
+    case Setting::panel: panelType_ = next; break;
+    case Setting::gamma: gamma_ = next; break;
+    }
 }
 
 void Session::selectAnswer(std::size_t answer)
