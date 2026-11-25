@@ -36,7 +36,9 @@ struct Controls {
     std::string textOverflow;
     std::string menuTitle;
     std::string menuHelp;
-    std::array<std::string, 2> menuChoices;
+    std::array<std::string, 3> menuChoices;
+    std::array<std::string, 2> toggleStates;
+    std::string stepSeparator;
 };
 
 struct Content {
@@ -62,6 +64,9 @@ public:
     const Screen& screen() const { return content_.screens[index_]; }
     const Controls& controls() const { return content_.controls; }
     std::optional<std::size_t> answer() const { return answers_[index_]; }
+    std::size_t step() const { return index_ + 1; }
+    std::size_t stepCount() const { return content_.screens.size(); }
+    bool reduceMotion() const { return reduceMotion_; }
     bool menuOpen() const { return menuOpen_; }
     std::size_t menuChoice() const { return menuChoice_; }
     patterns::Dither dither() const;
@@ -73,6 +78,7 @@ private:
     std::size_t index_ = 0;
     std::size_t menuChoice_ = 0;
     bool menuOpen_ = false;
+    bool reduceMotion_ = false;
     patterns::Dither previewDither_ = patterns::Dither::off;
     int textScale_ = 1;
 };

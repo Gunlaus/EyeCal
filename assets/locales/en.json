@@ -13,7 +13,11 @@
     "menu_title": "EyeCal menu",
     "menu_help": "Click or Up / Down   Enter Confirm   Esc Resume",
     "resume": "Resume",
-    "exit": "Exit EyeCal"
+    "exit": "Exit EyeCal",
+    "reduce_motion": "Reduce motion",
+    "on": "On",
+    "off": "Off",
+    "step_separator": " of "
   },
   "screens": [
     {

@@ -13,14 +13,15 @@ namespace {
 struct Push {
     std::array<int, 4> rect{};
     std::array<int, 2> viewport{};
-    int cellScale = 1;
+    float cellScale = 1;
     int solid = 0;
     std::array<std::uint32_t, 16> glyph{};
-    std::array<float, 4> ink{};
+    theme::Colour ink{};
+    std::array<float, 4> shape{};
 };
 static_assert(offsetof(Push, glyph) == 32);
 static_assert(offsetof(Push, ink) == 96);
-static_assert(sizeof(Push) == 112);
+static_assert(sizeof(Push) == 128);
 
 std::size_t utf8Length(unsigned char lead)
 {
@@ -81,12 +82,30 @@ std::vector<std::string_view> wrapText(std::span<const std::string_view> paragra
 
 int panelHeight(std::size_t lines, int scale)
 {
-    return (24 + 25 * static_cast<int>(lines)) * scale;
+    return (2 * theme::spacing + theme::baseline * static_cast<int>(lines)) * scale;
 }
 
 int panelColumns(int width, int scale)
 {
-    return (width / scale - 24) / glyphWidth;
+    return (width / scale - 2 * theme::spacing) / glyphWidth;
+}
+
+void drawShape(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D extent,
+               VkRect2D rect, theme::Colour ink, float radius, float outline, Icon icon)
+{
+    if (rect.extent.width == 0 || rect.extent.height == 0) {
+        return;
+    }
+    vk::bindQuadPipeline(command, overlay, extent, rect);
+    Push push{};
+    push.viewport = {static_cast<int>(extent.width), static_cast<int>(extent.height)};
+    push.rect = {rect.offset.x, rect.offset.y, static_cast<int>(rect.extent.width),
+                 static_cast<int>(rect.extent.height)};
+    push.ink = ink;
+    push.solid = static_cast<int>(icon) + 1;
+    push.shape = {radius, outline, 0.0f, 0.0f};
+    vkCmdPushConstants(command, overlay.layout, vk::quadStages, 0, sizeof(push), &push);
+    vkCmdDraw(command, 6, 1, 0, 0);
 }
 
 void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D extent,
@@ -105,19 +124,32 @@ void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D
         vkCmdDraw(command, 6, 1, 0, 0);
     };
 
-    push.rect = {panel.offset.x, panel.offset.y, static_cast<int>(panel.extent.width),
-                 static_cast<int>(panel.extent.height)};
-    push.solid = 1;
-    push.ink = style.fill;
-    draw();
-
+    drawShape(command, overlay, extent, panel, style.fill, theme::radius * scale, style.outline);
+    if (style.icon != Icon::none && panel.extent.width >= static_cast<unsigned>(120 * scale)) {
+        const int iconSize = 16 * scale;
+        drawShape(command, overlay, extent,
+                  {{panel.offset.x + theme::spacing * scale,
+                    panel.offset.y + (static_cast<int>(panel.extent.height) - iconSize) / 2},
+                   {static_cast<unsigned>(iconSize), static_cast<unsigned>(iconSize)}},
+                  style.text, 0.0f, 0.0f, style.icon);
+    }
+    vk::bindQuadPipeline(command, overlay, extent, panel);
     push.solid = 0;
     push.ink = style.text;
-    const auto contentHeight = (25 * static_cast<int>(lines.size()) - 5) * scale;
+    const auto contentHeight = (theme::baseline * static_cast<int>(lines.size()) - 5) * scale;
     int y = panel.offset.y + (style.centered
         ? (static_cast<int>(panel.extent.height) - contentHeight) / 2 : 12 * scale);
+    bool first = true;
     for (auto line : lines) {
-        const auto lineWidth = glyphWidth * static_cast<int>(glyphCount(line)) * scale;
+        const bool isHeading = first && style.heading &&
+            glyphCount(line) * glyphWidth * theme::titleScale * scale <=
+                static_cast<int>(panel.extent.width) - 2 * theme::spacing * scale;
+        first = false;
+        const float glyphScale = static_cast<float>(scale) * (isHeading ? theme::titleScale : 1.0f);
+        const int glyphPixels = static_cast<int>(glyphWidth * glyphScale);
+        const int glyphRows = static_cast<int>(glyphHeight * glyphScale);
+        push.cellScale = glyphScale;
+        const auto lineWidth = glyphPixels * static_cast<int>(glyphCount(line));
         int x = panel.offset.x + (style.centered
             ? (static_cast<int>(panel.extent.width) - lineWidth) / 2 : 12 * scale);
         for (unsigned char c : line) {
@@ -127,12 +159,12 @@ void drawTextPanel(VkCommandBuffer command, vk::QuadPipeline overlay, VkExtent2D
             if (c != ' ') {
                 const auto glyph = c >= 32 && c <= 126 ? c : '?';
                 push.glyph = glyphs[glyph - 32];
-                push.rect = {x, y, glyphWidth * scale, glyphHeight * scale};
+                push.rect = {x, y, glyphPixels, glyphRows};
                 draw();
             }
-            x += glyphWidth * scale;
+            x += glyphPixels;
         }
-        y += 25 * scale;
+        y += theme::baseline * scale;
     }
 }
 

@@ -139,6 +139,15 @@ private:
     bool shown_ = false;
 };
 
+struct ChromeState {
+    std::size_t step;
+    bool menu;
+    std::optional<calib::ui::Action> hover;
+    std::optional<calib::ui::Action> pressed;
+    std::optional<calib::ui::Action> focus;
+    bool operator==(const ChromeState&) const = default;
+};
+
 int run()
 {
     const auto content = calib::guide::loadContent(calib::guide::englishJson);
@@ -167,10 +176,13 @@ int run()
     auto outputColor = calib::platform::outputColor(window.get());
     auto nextColorCheck = Clock::now() + std::chrono::seconds(2);
     std::optional<Clock::time_point> settlingSince;
+    std::optional<ChromeState> chrome;
+    auto chromeStart = Clock::now();
+    bool animatingChrome = false;
 
     while (running) {
         SDL_Event event;
-        if (SDL_WaitEventTimeout(&event, input.waitTimeout(redraw ? 35 : 200, Clock::now()))) {
+        if (SDL_WaitEventTimeout(&event, input.waitTimeout(animatingChrome ? 16 : redraw ? 35 : 200, Clock::now()))) {
             do {
                 switch (event.type) {
                 case SDL_EVENT_QUIT:
@@ -265,9 +277,25 @@ int run()
             outputColor = current;
             nextColorCheck = now + std::chrono::seconds(2);
         }
+        const ChromeState currentChrome{
+            guide.step(), guide.menuOpen(),
+            input.pointerVisible() ? input.pointer().hovered(input.targets()) : std::nullopt,
+            input.pointer().pressed(), input.pointer().keyboardFocus()
+        };
+        if (currentChrome != chrome) {
+            chrome = currentChrome;
+            chromeStart = now;
+        }
+        const float t = std::clamp(std::chrono::duration<float, std::milli>(now - chromeStart).count() /
+                                  calib::ui::theme::transitionMs, 0.0f, 1.0f);
+        const bool motionAllowed = !guide.reduceMotion() && !licenses.shown() &&
+            (guide.menuOpen() || guide.screen().pattern == calib::guide::Pattern::none);
+        const float motion = motionAllowed ? (1.0f - t) * (1.0f - t) * (1.0f - t) : 0.0f;
+        redraw = redraw || animatingChrome || (motionAllowed && t < 1.0f);
+        animatingChrome = motionAllowed && t < 1.0f;
         if (running && redraw) {
             const bool focused = (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
-            redraw = !renderer.draw({guide, input.pointer(), input.pointerVisible(), diagnostics,
+            redraw = !renderer.draw({guide, input.pointer(), input.pointerVisible(), motion, diagnostics,
                                      exclusiveMode, focused, outputColor, notice, licenses.page()},
                                     input.targets());
             if (!redraw || !focused || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED)) {
