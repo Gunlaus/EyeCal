@@ -1,6 +1,7 @@
 #include "platform/platform.hpp"
 #include "vk/renderer.hpp"
 #include "licenses.hpp"
+#include "locale.hpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -100,6 +101,7 @@ public:
         }
     }
 
+    bool shown() const { return shown_; }
     void toggle() { shown_ = !shown_; }
 
     void move(bool forward)
@@ -136,8 +138,27 @@ private:
     bool shown_ = false;
 };
 
+std::optional<calib::guide::Input> guideInput(SDL_Keycode key)
+{
+    using calib::guide::Input;
+    switch (key) {
+    case SDLK_LEFT: return Input::previous;
+    case SDLK_RIGHT: return Input::next;
+    case SDLK_UP: return Input::up;
+    case SDLK_DOWN: return Input::down;
+    case SDLK_RETURN:
+    case SDLK_KP_ENTER: return Input::confirm;
+    case SDLK_ESCAPE: return Input::menu;
+    case SDLK_D: return Input::dither;
+    case SDLK_F3: return Input::textSize;
+    default: return std::nullopt;
+    }
+}
+
 int run()
 {
+    const auto content = calib::guide::loadContent(calib::guide::englishJson);
+    calib::guide::Session guide(content);
     requireSDL(SDL_Init(SDL_INIT_VIDEO), "Start SDL");
     const Sdl sdl{};
     requireSDL(SDL_Vulkan_LoadLibrary(nullptr), "Load the Vulkan driver");
@@ -153,7 +174,7 @@ int run()
     calib::vk::Renderer renderer;
     renderer.initialize(window.get());
     LicenseView licenses;
-    bool diagnostics = true;
+    bool diagnostics = false;
     bool exclusiveMode = false;
     bool running = true;
     bool redraw = true;
@@ -190,9 +211,6 @@ int run()
                         break;
                     }
                     switch (event.key.key) {
-                    case SDLK_ESCAPE:
-                        running = false;
-                        break;
                     case SDLK_F1:
                         diagnostics = !diagnostics;
                         redraw = true;
@@ -222,6 +240,15 @@ int run()
                         redraw = true;
                         break;
                     default:
+                        if (licenses.shown() && event.key.key == SDLK_ESCAPE) {
+                            licenses.toggle();
+                            redraw = true;
+                        } else if (!licenses.shown()) {
+                            if (const auto input = guideInput(event.key.key)) {
+                                running = !guide.handle(*input);
+                                redraw = true;
+                            }
+                        }
                         break;
                     }
                     break;
@@ -240,8 +267,8 @@ int run()
         }
         if (running && redraw) {
             const bool focused = (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0;
-            redraw = !renderer.draw(diagnostics, exclusiveMode, focused, outputColor, notice,
-                                    licenses.page());
+            redraw = !renderer.draw({guide, diagnostics, exclusiveMode, focused, outputColor,
+                                     notice, licenses.page()});
             if (!redraw || !focused || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_MINIMIZED)) {
                 settlingSince.reset();
             } else if (!settlingSince) {

@@ -9,14 +9,6 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 include(CTest)
 include(FetchContent)
 option(EYECAL_BUILD_APP "Build the Vulkan executable" ON)
-if(BUILD_TESTING)
-    add_executable(surface_tests tests/surface_tests.cpp)
-    target_include_directories(surface_tests PRIVATE src)
-    add_test(NAME m1_surface_policy COMMAND surface_tests)
-    add_test(NAME m1_no_srgb_formats
-        COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/no_srgb_formats.cmake)
-endif()
 if(NOT EYECAL_BUILD_APP AND NOT BUILD_TESTING)
     return()
 endif()
@@ -24,14 +16,46 @@ endif()
 FetchContent_Declare(vulkan_headers
     URL https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/refs/tags/v1.4.321
     URL_HASH SHA256=7c1874f9186d9e7d5245e279cdccaa77a66ed8f52871b428630aeb771dc7623c)
-FetchContent_MakeAvailable(vulkan_headers)
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(nlohmann_json
+    URL https://codeload.github.com/nlohmann/json/tar.gz/refs/tags/v3.12.0
+    URL_HASH SHA256=4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187)
+FetchContent_MakeAvailable(vulkan_headers nlohmann_json)
+
+set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${GENERATED_DIR}")
+set(ENGLISH_LOCALE "${CMAKE_CURRENT_SOURCE_DIR}/assets/locales/en.json")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ENGLISH_LOCALE}")
+file(READ "${ENGLISH_LOCALE}" english_json)
+configure_file(cmake/locale.hpp.in "${GENERATED_DIR}/locale.hpp" @ONLY)
+
+add_library(eyecal_core STATIC src/guide/guide.cpp src/patterns/quantize.cpp)
+target_include_directories(eyecal_core PUBLIC src PRIVATE assets/blue-noise)
+target_link_libraries(eyecal_core PRIVATE nlohmann_json::nlohmann_json)
+if(MSVC)
+    target_compile_options(eyecal_core PRIVATE /W4 /permissive- /fp:strict)
+else()
+    target_compile_options(eyecal_core PRIVATE -Wall -Wextra -Wpedantic -ffp-contract=off)
+endif()
+
 if(BUILD_TESTING)
     set(DOCTEST_NO_INSTALL ON CACHE BOOL "" FORCE)
     FetchContent_Declare(doctest
         URL https://codeload.github.com/doctest/doctest/tar.gz/refs/tags/v2.4.12
         URL_HASH SHA256=73381c7aa4dee704bd935609668cf41880ea7f19fa0504a200e13b74999c2d70)
     FetchContent_MakeAvailable(doctest)
+    add_executable(surface_tests tests/surface_tests.cpp)
+    target_include_directories(surface_tests PRIVATE src)
     target_link_libraries(surface_tests PRIVATE Vulkan::Headers doctest::doctest)
+    add_executable(core_tests tests/core_tests.cpp)
+    target_include_directories(core_tests PRIVATE "${GENERATED_DIR}")
+    target_link_libraries(core_tests PRIVATE eyecal_core doctest::doctest)
+    add_test(NAME m1_surface_policy COMMAND surface_tests)
+    add_test(NAME m1_no_srgb_formats
+        COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/no_srgb_formats.cmake)
+    add_test(NAME m2_guide_and_quantize COMMAND core_tests)
 endif()
 if(NOT EYECAL_BUILD_APP)
     return()
@@ -53,29 +77,34 @@ FetchContent_Declare(volk
 FetchContent_MakeAvailable(SDL3 volk)
 target_link_libraries(volk PUBLIC Vulkan::Headers)
 
-set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-file(MAKE_DIRECTORY "${GENERATED_DIR}")
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/assets/font/OFL.txt" font_license)
 file(READ "${sdl3_SOURCE_DIR}/LICENSE.txt" sdl_license)
 file(READ "${volk_SOURCE_DIR}/LICENSE.md" volk_license)
+file(READ "${nlohmann_json_SOURCE_DIR}/LICENSE.MIT" json_license)
 configure_file(cmake/licenses.hpp.in "${GENERATED_DIR}/licenses.hpp" @ONLY)
-foreach(stage IN ITEMS vert frag)
-    set(shader "${CMAKE_CURRENT_SOURCE_DIR}/shaders/overlay.${stage}")
-    set(blob "${GENERATED_DIR}/overlay_${stage}.spv")
-    set(header "${GENERATED_DIR}/overlay_${stage}.hpp")
+foreach(shader_name IN ITEMS quad.vert overlay.frag ramp.frag)
+    string(REPLACE "." "_" shader_symbol "${shader_name}")
+    set(shader "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${shader_name}")
+    set(blob "${GENERATED_DIR}/${shader_symbol}.spv")
+    set(header "${GENERATED_DIR}/${shader_symbol}.hpp")
     add_custom_command(OUTPUT "${header}"
         BYPRODUCTS "${blob}"
-        COMMAND "${GLSLC}" --target-env=vulkan1.3 -O "${shader}" -o "${blob}"
+        COMMAND "${GLSLC}" --target-env=vulkan1.3 -O
+                "-I${CMAKE_CURRENT_SOURCE_DIR}/shaders/include"
+                "-I${CMAKE_CURRENT_SOURCE_DIR}/assets/blue-noise" "${shader}" -o "${blob}"
         COMMAND "${CMAKE_COMMAND}" "-DINPUT=${blob}" "-DOUTPUT=${header}"
-                "-DNAME=overlay_${stage}" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_spirv.cmake"
+                "-DNAME=${shader_symbol}" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_spirv.cmake"
         DEPENDS "${shader}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_spirv.cmake"
+                "${CMAKE_CURRENT_SOURCE_DIR}/shaders/include/quantize.glsl"
+                "${CMAKE_CURRENT_SOURCE_DIR}/assets/blue-noise/blue_noise_ranks.inc"
         VERBATIM)
     list(APPEND shader_headers "${header}")
 endforeach()
 
-add_executable(EyeCal WIN32 src/app/main.cpp src/vk/renderer.cpp src/ui/overlay.cpp ${shader_headers})
+add_executable(EyeCal WIN32 src/app/main.cpp src/vk/renderer.cpp src/vk/quad.cpp
+    src/ui/overlay.cpp src/ui/guide_view.cpp src/patterns/ramp.cpp ${shader_headers})
 target_include_directories(EyeCal PRIVATE src "${GENERATED_DIR}")
-target_link_libraries(EyeCal PRIVATE SDL3::SDL3-static volk::volk)
+target_link_libraries(EyeCal PRIVATE eyecal_core SDL3::SDL3-static volk::volk)
 if(WIN32)
     target_sources(EyeCal PRIVATE src/platform/windows.cpp)
     target_link_libraries(EyeCal PRIVATE dxgi user32)

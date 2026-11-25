@@ -1,5 +1,6 @@
 #pragma once
 
+#include "guide/guide.hpp"
 #include "platform/platform.hpp"
 #include "ui/overlay.hpp"
 
@@ -9,6 +10,16 @@
 #include <vector>
 
 namespace calib::vk {
+
+struct Frame {
+    const guide::Session& guide;
+    bool diagnostics;
+    bool exclusiveRequested;
+    bool focused;
+    platform::OutputColor outputColor;
+    std::string_view notice;
+    std::span<const std::string_view> licensePage;
+};
 
 class Renderer {
 public:
@@ -22,15 +33,11 @@ public:
     void dropSwapchain();
 
     // False means the window or swapchain is still settling. Try again on the next event tick.
-    bool draw(bool diagnostics, bool modeRequested, bool focused,
-              platform::OutputColor outputColor, std::string_view notice,
-              std::span<const std::string_view> licensePage);
+    bool draw(const Frame& frame);
 
 private:
     bool buildSwapchain(bool exclusiveRequested);
-    void record(std::uint32_t index, bool diagnostics, bool modeRequested,
-                platform::OutputColor outputColor, std::string_view notice,
-                std::span<const std::string_view> licensePage);
+    void record(std::uint32_t index, const Frame& frame);
 
     SDL_Window* window_ = nullptr;
     VkInstance instance_ = VK_NULL_HANDLE;
@@ -45,7 +52,8 @@ private:
     VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
     VkFormat format_ = VK_FORMAT_UNDEFINED;
     VkExtent2D extent_{};
-    ui::OverlayPipelines overlay_{};
+    QuadPipeline overlay_{};
+    QuadPipeline ramp_{};
     std::vector<VkImage> images_;
     std::vector<VkImageView> views_;
     std::vector<VkSemaphore> presented_;
