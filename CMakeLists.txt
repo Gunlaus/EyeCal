@@ -101,6 +101,8 @@ foreach(shader_name IN ITEMS quad.vert overlay.frag ramp.frag)
         DEPENDS "${shader}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_spirv.cmake"
                 "${CMAKE_CURRENT_SOURCE_DIR}/shaders/include/quantize.glsl"
                 "${CMAKE_CURRENT_SOURCE_DIR}/shaders/include/calibration.glsl"
+                "${CMAKE_CURRENT_SOURCE_DIR}/shaders/include/pq.glsl"
+                "${CMAKE_CURRENT_SOURCE_DIR}/shaders/include/colour_hdr.glsl"
                 "${CMAKE_CURRENT_SOURCE_DIR}/assets/blue-noise/blue_noise_ranks.inc"
         VERBATIM)
     list(APPEND shader_headers "${header}")

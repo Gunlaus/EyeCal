@@ -1,42 +1,33 @@
 # EyeCal
 
-**Calibrate your display by eye, one setting at a time.**
+**Adjust your display while the test pattern is still on screen.**
 
-Can you make out the darkest step? Do the brightest whites still look distinct? EyeCal is being built to help you answer those questions on an SDR monitor, TV, or projector. Each guided screen will pair a fullscreen test pattern with plain-language instructions and an example of what a bad result looks like.
+EyeCal is a Windows-first display test suite for checking SDR levels, sharpness, banding, colour, and HDR10 by eye. Each test tells you which display, GPU, or playback setting to open and what to check after changing it.
 
-EyeCal is designed for people without a colorimeter. Measuring color accuracy still requires a meter.
+## Start a test
 
-> **Project status · Milestone 4**
->
-> `EyeCal.exe` guides you through SDR setup, RGB range, brightness, white clipping, gamma, sharpness, and banding. Each test shows a procedural example of what a bad result looks like.
+Get **EyeCal-Windows-x64** from a successful [GitHub Actions run](https://github.com/Gunlaus/EyeCal/actions/workflows/build.yml). Unzip it and run `EyeCal.exe` on Windows 10 or 11 with a Vulkan 1.3 driver. Set Windows to the display’s recommended resolution.
 
-## Try the Windows prototype
+- **Start SDR** for RGB range, black level, white clipping, gamma, sharpness, and banding. Turn off Windows HDR and auto colour management for these checks.
+- **Colour tests** for greyscale tint, saturation, individual channel clipping, and solid fields.
+- **HDR tests** for peak clipping, near-black detail, reference white, and brightness at three window sizes. Turn on Windows **Use HDR**. These tests require Vulkan to expose a compatible 10-bit HDR10 swapchain. The app shows why a test is paused if that path is unavailable.
+- **All tests** jumps directly to any pattern. Keep the display’s picture menu open while making adjustments. The top-right panel shows the app’s active signal format and fullscreen state.
 
-You’ll need Windows 10 or 11 and a Vulkan 1.3 graphics driver. Set Windows to the display’s recommended resolution, then build the executable below or download `EyeCal-Windows-x64` from a successful Windows run in [GitHub Actions](https://github.com/Gunlaus/EyeCal/actions/workflows/build.yml). Unzip the artifact and double-click `EyeCal.exe`.
-
-| Key | What it does |
+| Control | Action |
 | --- | --- |
-| **F1** | Show or hide the swapchain format, pixel dimensions, present mode, and HDR status |
-| **F11** | Switch fullscreen modes. F1 shows whether Vulkan granted exclusive presentation |
-| **F2** | Read the bundled licenses. Use **Page Up** and **Page Down** to move between pages |
-| **Left / Right**, **Enter** | Go back or forward through the guide |
-| **Up / Down** | Choose an answer or menu item |
-| **F3** | Cycle text sizes |
-| **D / B / M** | Change dither, request another bit depth, or toggle motion on the relevant banding screen |
-| **Esc** | Open the menu to resume or exit |
+| **Left / Right**, **Enter**, mouse wheel | Previous or next test |
+| **Esc** | Open or close the test library |
+| **Tab**, **Shift+Tab**, **Enter** | Focus and activate a control |
+| **D** | Toggle dithering on the first ramp; change the algorithm on the split ramp |
+| **B / M** | Switch probe bit depth or toggle the moving shadow ramp |
+| **F1** | Expand or collapse signal details |
+| **F2 / F3 / F11** | Licences, text size, exclusive or borderless fullscreen |
 
-The same actions are available in the on-screen Back, Next, and Menu buttons. Click a choice or press its number to answer. Scroll down to advance, scroll up or right-click to go back. Move the mouse to reveal the cursor. It hides after two seconds of inactivity and stays visible on the menu. Tab and Shift+Tab move between available buttons, and Enter activates the focused button.
+EyeCal can help isolate clipping, unevenness, and likely causes of banding. A meter is needed to measure colour accuracy, luminance, or actual panel bit depth. The HDR luminance labels are encoded signal targets.
 
-## Calibration checks
+## Build
 
-- **Set black and white levels.** Find crushed shadows, clipped highlights, and full-range versus limited-range mismatches.
-- **Tune gamma and sharpness.** Compare small checkerboards with solid greys, then use fine lines to spot blur, halos, and overscan.
-- **Investigate banding.** Compare ramps with and without dithering, switch between 8-bit and 10-bit paths where supported, and check whether banding is concentrated in the shadows.
-- **Planned: check uniformity.** Use flat fields to look for uneven brightness and bad pixels, then save a plain-text summary.
-
-## Build from source
-
-Install Visual Studio with **Desktop development with C++**, CMake 3.24 or newer, and the Vulkan SDK with `glslc`. CMake fetches pinned build dependencies.
+Install Visual Studio with **Desktop development with C++**, CMake 3.24 or newer, and the Vulkan SDK with `glslc`.
 
 ```powershell
 cmake -S . -B build -A x64
@@ -44,12 +35,12 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The executable is at `build/Release/EyeCal.exe`. SDL, volk, shaders, the font atlas, and the English guide are built in. The app uses the system graphics driver and makes no network requests.
+The standalone Windows executable is at `build/Release/EyeCal.exe`. Build dependencies are pinned. The app runs locally and makes no network requests.
 
 <details>
-<summary>Optional Linux build and CPU-only checks</summary>
+<summary>Linux and CPU-only checks</summary>
 
-Install a C++20 compiler, CMake, `glslc`, and SDL’s X11 development dependencies. Linux supports borderless fullscreen and reports HDR status as unknown.
+Linux builds with a C++20 compiler, CMake, `glslc`, and SDL’s X11 development dependencies. The portable platform layer supports SDR and reports Windows HDR detection as unknown.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSDL_WAYLAND=OFF
@@ -57,8 +48,8 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-For CPU checks without SDL or a shader compiler, add `-DEYECAL_BUILD_APP=OFF` when configuring.
+Add `-DEYECAL_BUILD_APP=OFF` when configuring to run the CPU checks without SDL or `glslc`.
 
 </details>
 
-[Architecture](docs/ARCHITECTURE.md) · [Pattern definitions](docs/PATTERNS.md) · [Verified platform behavior](docs/VERIFIED.md) · [On-device checklist](docs/ON_DEVICE_CHECKLIST.md) · [Third-party notices](THIRD_PARTY.md)
+[Pattern definitions](docs/PATTERNS.md) · [Architecture](docs/ARCHITECTURE.md) · [Platform findings](docs/VERIFIED.md) · [On-device checklist](docs/ON_DEVICE_CHECKLIST.md) · [Third-party notices](THIRD_PARTY.md)

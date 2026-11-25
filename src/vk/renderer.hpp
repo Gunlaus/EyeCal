@@ -44,7 +44,7 @@ public:
     bool draw(const Frame& frame, std::vector<ui::HitTarget>& targets);
 
 private:
-    bool buildSwapchain(bool exclusiveRequested, bool requestTenBit);
+    bool buildSwapchain(bool exclusiveRequested, bool requestTenBit, bool requestHdr);
     std::vector<ui::HitTarget> record(std::uint32_t index, const Frame& frame);
 
     SDL_Window* window_ = nullptr;
@@ -70,6 +70,10 @@ private:
     bool rebuild_ = true;
     bool previousDepthRequest_ = false;
     bool supportsTenBit_ = false;
+    bool hdrColorspaceEnabled_ = false;
+    bool hdrMetadataEnabled_ = false;
+    bool previousHdrRequest_ = false;
+    bool activeHdr_ = false;
 };
 
 } // namespace calib::vk

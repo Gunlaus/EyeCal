@@ -46,3 +46,14 @@ All values below are 8-bit full-range RGB codes, with dither Off. A strip index 
 | 6d. Shadows | Upper region maps linear light 0–0.20 through the sRGB transfer function. Lower region maps linear light 0.20–0.40. Both span the full width with dither off. At 8-bit the endpoint pairs are 0–124 and 124–170. In motion mode, replace normalized horizontal position `x` with `1 - abs(2 * fract(0.5 * x + phase) - 1)`. Phase moves at one cycle per 16 seconds on a monotonic clock. This is a visually moving stimulus for observing temporal artifacts. |
 
 Underlying conventions are documented by [Khronos on swapchain format pairs](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormatsKHR.html), the [Vulkan fixed-point conversion rules](https://docs.vulkan.org/spec/latest/chapters/fundamentals.html#fundamentals-fixedfpconv), and the [W3C sRGB conversion code](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+## Live SDR colour and HDR10
+
+- **Dither on/off.** The first banding screen toggles blue noise in the main vertical ramp. It uses the same geometry, code range and seed for both states. The coarse thumbnail stays undithered.
+- **Greyscale tint.** Neutral RGB triplets 16, 32, 64, 96, 128, 176, 224 and 255. The example adds `(0.08, 0, -0.04) × sin(π × grey)` in normalized encoded RGB. White-balance accuracy requires a meter.
+- **Saturation and channel clipping.** Six RGB/CMY rows mix code-128 neutral with their respective primary/secondary at strengths 0, 64, 128, 166, 191, 217, 242 and 255 over 255. The example clips its last three columns to full saturation. The separate RGB clipping test uses 224, 232, 240, 246, 250, 253 and 255 in one channel at a time. These are signal comparisons rather than measured gamut/saturation targets.
+- **Uniformity.** Flat 8-bit code values 13, 51, 128, 255, red, green, blue and black in the pattern region.
+- **HDR clipping and shadows.** BT.2100 PQ / BT.2020 neutral values with a code-zero surround. Highlights use a 20%-height strip with 100, 200, 400, 600, 1000, 1500, 2000 and 4000 cd/m² targets. Shadow patches use a half-height strip with 0, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5 and 1 cd/m² targets. At 10-bit, several low levels may be hard to distinguish on a given display.
+- **HDR reference white and window response.** Reference white uses 80, 100, 203 and 300 cd/m² in a central band. The area test uses the same encoded 600 cd/m² patch at 2%, 10% and 25% of the available pattern region. All HDR levels use the same PQ inverse EOTF before 10-bit UNORM quantization.
+
+See [ITU-R BT.2100](https://www.itu.int/rec/R-REC-BT.2100) for PQ and BT.2020, and [Khronos colour space semantics](https://docs.vulkan.org/refpages/latest/refpages/source/VkColorSpaceKHR.html) for the Vulkan HDR10/ST 2084 surface.

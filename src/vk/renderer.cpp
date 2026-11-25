@@ -1,5 +1,6 @@
 #include "vk/renderer.hpp"
 #include "patterns/ramp.hpp"
+#include "patterns/hdr.hpp"
 #include "ui/guide_view.hpp"
 #include "vk/check.hpp"
 #include "vk/surface_policy.hpp"
@@ -77,18 +78,6 @@ std::string_view formatName(VkFormat format)
     }
 }
 
-std::string_view colorStatus(platform::OutputColor state)
-{
-    switch (state) {
-    case platform::OutputColor::hdr:
-        return "HDR is on. Turn it off for SDR tests.";
-    case platform::OutputColor::sdr:
-        return "Windows reports SDR. ACM status unknown.";
-    case platform::OutputColor::unknown:
-        return "HDR status unknown. Check display settings.";
-    }
-    return {};
-}
 
 } // namespace
 
@@ -113,6 +102,10 @@ void Renderer::initialize(SDL_Window* window)
     const auto instanceExtensions = list<VkExtensionProperties>([](auto* size, auto* items) {
         return vkEnumerateInstanceExtensionProperties(nullptr, size, items);
     });
+    hdrColorspaceEnabled_ = hasExtension(instanceExtensions, VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+    if (hdrColorspaceEnabled_) {
+        extensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+    }
     const auto* exclusive = platform::exclusiveDeviceExtension();
     const bool wantExclusive = exclusive &&
         hasExtension(instanceExtensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
@@ -173,6 +166,8 @@ void Renderer::initialize(SDL_Window* window)
         family = *queue;
         physical_ = candidate;
         exclusiveEnabled_ = wantExclusive && hasExtension(deviceExtensions, exclusive);
+        hdrMetadataEnabled_ = hdrColorspaceEnabled_ &&
+            hasExtension(deviceExtensions, VK_EXT_HDR_METADATA_EXTENSION_NAME);
         break;
     }
     if (!physical_) {
@@ -185,7 +180,9 @@ void Renderer::initialize(SDL_Window* window)
     queueInfo.queueFamilyIndex = family;
     queueInfo.queueCount = 1;
     queueInfo.pQueuePriorities = &priority;
-    const std::array deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME, exclusive};
+    std::vector<const char*> deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    if (exclusiveEnabled_) deviceExtensions.push_back(exclusive);
+    if (hdrMetadataEnabled_) deviceExtensions.push_back(VK_EXT_HDR_METADATA_EXTENSION_NAME);
     VkPhysicalDeviceVulkan13Features features{};
     features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     features.dynamicRendering = VK_TRUE;
@@ -194,7 +191,7 @@ void Renderer::initialize(SDL_Window* window)
     deviceInfo.pNext = &features;
     deviceInfo.queueCreateInfoCount = 1;
     deviceInfo.pQueueCreateInfos = &queueInfo;
-    deviceInfo.enabledExtensionCount = exclusiveEnabled_ ? 2 : 1;
+    deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
     deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
     check(vkCreateDevice(physical_, &deviceInfo, nullptr, &device_), "Create Vulkan graphics device");
     volkLoadDevice(device_);
@@ -269,7 +266,7 @@ bool Renderer::activeTenBit() const
     return isTenBitFormat(format_);
 }
 
-bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
+bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit, bool requestHdr)
 {
     int width = 0;
     int height = 0;
@@ -296,6 +293,7 @@ bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
     });
     const auto eightBit = chooseSurfaceFormat(formats);
     const auto tenBit = chooseTenBitFormat(formats);
+    const auto hdr = hdrColorspaceEnabled_ ? chooseHdr10Format(formats) : std::nullopt;
     if (!eightBit) {
         throw std::runtime_error("The current surface has no supported SDR UNORM format.");
     }
@@ -315,7 +313,7 @@ bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
     info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     info.surface = surface_;
     info.minImageCount = chooseImageCount(caps);
-    const auto format = requestTenBit && tenBit ? *tenBit : *eightBit;
+    const auto format = requestHdr && hdr ? *hdr : requestTenBit && tenBit ? *tenBit : *eightBit;
     info.imageFormat = format.format;
     info.imageColorSpace = format.colorSpace;
     info.imageExtent = *extent;
@@ -334,7 +332,7 @@ bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
     auto created = create();
     if (isTenBitFormat(info.imageFormat) && (created.result == VK_ERROR_FORMAT_NOT_SUPPORTED ||
                                            created.result == VK_ERROR_INITIALIZATION_FAILED)) {
-        supportsTenBit_ = false;
+        if (info.imageColorSpace != VK_COLOR_SPACE_HDR10_ST2084_EXT) supportsTenBit_ = false;
         info.imageFormat = eightBit->format;
         info.imageColorSpace = eightBit->colorSpace;
         created = create();
@@ -346,6 +344,21 @@ bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
     exclusiveAcquired_ = created.exclusive;
     extent_ = *extent;
     format_ = info.imageFormat;
+    previousHdrRequest_ = requestHdr;
+    activeHdr_ = info.imageColorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT;
+    if (activeHdr_ && hdrMetadataEnabled_ && vkSetHdrMetadataEXT) {
+        VkHdrMetadataEXT mastering{};
+        mastering.sType = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
+        mastering.displayPrimaryRed = {0.708f, 0.292f};
+        mastering.displayPrimaryGreen = {0.170f, 0.797f};
+        mastering.displayPrimaryBlue = {0.131f, 0.046f};
+        mastering.whitePoint = {0.3127f, 0.3290f};
+        mastering.minLuminance = 0.0f;
+        mastering.maxLuminance = 4000.0f;
+        mastering.maxContentLightLevel = 4000.0f;
+        mastering.maxFrameAverageLightLevel = 400.0f;
+        vkSetHdrMetadataEXT(device_, 1, &swapchain_, &mastering);
+    }
     previousDepthRequest_ = requestTenBit;
     images_ = list<VkImage>([&](auto* size, auto* items) {
         return vkGetSwapchainImagesKHR(device_, swapchain_, size, items);
@@ -364,7 +377,7 @@ bool Renderer::buildSwapchain(bool exclusiveRequested, bool requestTenBit)
         sem.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         check(vkCreateSemaphore(device_, &sem, nullptr, &presented_[index]), "Create present semaphore");
     }
-    overlay_ = ui::createOverlay(device_, format_);
+    overlay_ = ui::createOverlay(device_, format_, activeHdr_);
     ramp_ = patterns::createRamp(device_, format_);
     rebuild_ = false;
     return true;
@@ -396,7 +409,12 @@ std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& fr
     target.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     target.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     target.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    std::copy(ui::theme::canvas.begin(), ui::theme::canvas.end(), target.clearValue.color.float32);
+    if (activeHdr_) {
+        const float dark = patterns::pqEncode(0.4f);
+        target.clearValue.color = {{dark, dark, dark, 1.0f}};
+    } else {
+        std::copy(ui::theme::canvas.begin(), ui::theme::canvas.end(), target.clearValue.color.float32);
+    }
     VkRenderingInfo render{};
     render.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     render.renderArea = {{0, 0}, extent_};
@@ -407,32 +425,41 @@ std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& fr
 
     std::array<std::string_view, 5> lines{};
     std::size_t lineCount = 0;
+    lines[lineCount++] = activeHdr_ ? "HDR10   /   PQ   /   10 BIT" :
+        activeTenBit() ? "SDR   /   10 BIT" : "SDR   /   8 BIT";
+    lines[lineCount++] = exclusiveAcquired_ ? "Vulkan exclusive" :
+        frame.exclusiveRequested ? "Mode switch / no Vulkan exclusive" : "Borderless";
+    lines[lineCount++] = frame.outputColor == platform::OutputColor::hdr ? "Windows HDR: On" :
+        frame.outputColor == platform::OutputColor::sdr ? "Windows HDR: Off" : "Windows HDR: Unknown";
+
     std::string surface;
     if (frame.diagnostics) {
-        surface = std::string(formatName(format_)) + "   " + std::to_string(extent_.width) +
-                  " x " + std::to_string(extent_.height) + "   FIFO";
+        surface = std::string(formatName(format_)) + " / " + std::to_string(extent_.width) +
+            " x " + std::to_string(extent_.height) + " / FIFO";
         lines[lineCount++] = surface;
-        lines[lineCount++] = exclusiveAcquired_ ? "Fullscreen: Vulkan exclusive"
-            : frame.exclusiveRequested ? "Fullscreen: mode set, Vulkan not exclusive"
-                                       : "Fullscreen: borderless";
     }
-    if (frame.diagnostics || frame.outputColor == platform::OutputColor::hdr) {
-        lines[lineCount++] = colorStatus(frame.outputColor);
-    }
-    if (!frame.notice.empty()) {
-        lines[lineCount++] = frame.notice;
+    if (!frame.notice.empty()) lines[lineCount++] = frame.notice;
+    const bool hdrTest = guide::isHdr(frame.guide.screen().pattern);
+    const auto& messages = frame.guide.controls().displayMessages;
+    const bool patternAvailable = hdrTest ? activeHdr_ : frame.outputColor != platform::OutputColor::hdr;
+    std::string_view displayMessage;
+    if (hdrTest) {
+        displayMessage = activeHdr_ ? messages[1] :
+            frame.outputColor == platform::OutputColor::sdr ? messages[0] :
+            frame.outputColor == platform::OutputColor::unknown ? messages[4] : messages[2];
+    } else if (frame.outputColor == platform::OutputColor::hdr) {
+        displayMessage = messages[3];
     }
     std::vector<ui::HitTarget> targets;
     if (frame.licensePage.empty()) {
         const auto depth = activeTenBit() ? patterns::OutputDepth::unorm10 : patterns::OutputDepth::unorm8;
         targets = ui::drawGuide(command_, overlay_, ramp_, extent_, depth,
                                 frame.guide, std::span{lines}.first(lineCount), frame.pointer,
-                                frame.pointerVisible, frame.chromeMotion, frame.patternPhase);
+                                frame.pointerVisible, frame.chromeMotion, frame.patternPhase,
+                                patternAvailable, displayMessage);
     } else {
         std::vector<std::string_view> page(frame.licensePage.begin(), frame.licensePage.end());
-        if (frame.outputColor == platform::OutputColor::hdr) {
-            page.insert(page.begin(), colorStatus(frame.outputColor));
-        }
+        if (!displayMessage.empty()) page.insert(page.begin(), displayMessage);
         ui::drawOverlay(command_, overlay_, extent_, page);
     }
     vkCmdEndRendering(command_);
@@ -455,8 +482,10 @@ bool Renderer::draw(const Frame& frame, std::vector<ui::HitTarget>& targets)
         return false;
     }
     const bool requestTenBit = frame.guide.wantsTenBit();
-    if ((rebuild_ || previousDepthRequest_ != requestTenBit) &&
-        !buildSwapchain(frame.exclusiveRequested && frame.focused, requestTenBit)) {
+    const bool requestHdr = guide::isHdr(frame.guide.screen().pattern) &&
+        frame.outputColor == platform::OutputColor::hdr;
+    if ((rebuild_ || previousDepthRequest_ != requestTenBit || previousHdrRequest_ != requestHdr) &&
+        !buildSwapchain(frame.exclusiveRequested && frame.focused, requestTenBit, requestHdr)) {
         return false;
     }
     check(vkWaitForFences(device_, 1, &frameFence_, VK_TRUE, UINT64_MAX), "Wait for previous frame");

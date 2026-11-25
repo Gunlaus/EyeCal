@@ -47,9 +47,9 @@ std::size_t glyphCount(std::string_view text)
 
 } // namespace
 
-vk::QuadPipeline createOverlay(VkDevice device, VkFormat format)
+vk::QuadPipeline createOverlay(VkDevice device, VkFormat format, bool hdr)
 {
-    return vk::createQuadPipeline(device, format, overlay_frag, sizeof(Push), true);
+    return vk::createQuadPipeline(device, format, overlay_frag, sizeof(Push), true, hdr);
 }
 
 std::vector<std::string_view> wrapText(std::span<const std::string_view> paragraphs, int columns)

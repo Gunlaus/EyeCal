@@ -113,6 +113,10 @@ bool GuideInput::activate(Action action)
         invalidateTargets();
         return session_.handle(action.command == Command::dither ? Input::dither :
             action.command == Command::bitDepth ? Input::bitDepth : Input::movePattern);
+    case Command::startSuite:
+        session_.startSuite(action.index);
+        invalidateTargets();
+        return false;
     case Command::divider:
     case Command::probeRegion:
         return false;

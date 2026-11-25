@@ -10,7 +10,7 @@
 
 namespace calib::ui {
 
-vk::QuadPipeline createOverlay(VkDevice device, VkFormat format);
+vk::QuadPipeline createOverlay(VkDevice device, VkFormat format, bool hdr);
 std::vector<std::string_view> wrapText(std::span<const std::string_view> paragraphs, int columns);
 int panelHeight(std::size_t lines, int scale);
 int panelColumns(int width, int scale);

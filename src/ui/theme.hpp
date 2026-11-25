@@ -7,6 +7,7 @@ namespace calib::ui::theme {
 using Colour = std::array<float, 4>;
 inline constexpr Colour canvas{0.052f, 0.060f, 0.070f, 1.0f};
 inline constexpr Colour panel{0.085f, 0.098f, 0.115f, 1.0f};
+inline constexpr Colour signal{0.071f, 0.107f, 0.145f, 1.0f};
 inline constexpr Colour button{0.112f, 0.128f, 0.148f, 1.0f};
 inline constexpr Colour accent{0.49f, 0.68f, 0.83f, 1.0f};
 inline constexpr Colour focus{0.165f, 0.225f, 0.278f, 1.0f};

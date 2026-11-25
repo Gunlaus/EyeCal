@@ -1,12 +1,10 @@
 {
   "controls": {
-    "navigation": "Wheel or Left / Right: Back / Next   Right-click: Back",
     "back": "Back",
     "next": "Next",
-    "menu": "Menu",
-    "answer": "Choose by click, Up / Down, or number.",
-    "preview": "D Change dither   F3 Text size   F1 Diagnostics",
-    "intro": "F3 Text size   F1 Diagnostics",
+    "menu": "All tests",
+    "preview": "D Toggle dither   F3 Text size   F1 More diagnostics",
+    "intro": "F3 Text size   F11 Fullscreen   F1 More diagnostics",
     "dither_label": "Dither",
     "dither_modes": [
       "Off",
@@ -15,9 +13,8 @@
       "TPDF"
     ],
     "text_overflow": "Text too large here. Press F3.",
-    "menu_title": "EyeCal menu",
-    "menu_help": "Click or Up / Down   Enter Confirm   Esc Resume",
-    "resume": "Resume",
+    "menu_title": "Test library",
+    "menu_help": "Choose a test to jump to it. Esc closes the library.",
     "exit": "Exit EyeCal",
     "reduce_motion": "Reduce motion",
     "on": "On",
@@ -38,124 +35,86 @@
     "motion_buttons": [
       "Start moving ramp (M)",
       "Pause moving ramp (M)"
+    ],
+    "baseline_buttons": [
+      "Dither Off (D)",
+      "Dither On  (D)"
+    ],
+    "display_messages": [
+      "Enable Use HDR in Windows Settings > System > Display, then return here.",
+      "HDR is active. Windows and Vulkan report an HDR10 path.",
+      "Windows reports HDR, but this Vulkan surface has no compatible HDR10 output.",
+      "SDR tests are paused while Windows HDR is on. Turn it off in Windows, or open the HDR suite.",
+      "Windows HDR state could not be verified. HDR patterns are paused."
+    ],
+    "start_buttons": [
+      "Start SDR",
+      "Colour tests",
+      "HDR tests"
     ]
   },
   "screens": [
     {
       "id": "intro",
-      "headline": "Set up your display for SDR",
+      "headline": "Calibrate your display live",
       "instructions": [
-        "Turn off HDR and auto colour management in Windows display settings.",
-        "Dim the room and sit where you normally watch. Use the display's recommended resolution.",
-        "Turn off Game, Vivid and Dynamic modes, motion smoothing and contrast enhancers.",
-        "EyeCal checks SDR by eye. A meter is needed to measure colour accuracy."
+        "Open your monitor or TV picture menu while EyeCal is running. Start in Standard, Cinema, or Filmmaker mode and disable eye comfort, dynamic contrast, and automatic brightness.",
+        "For SDR, turn off Use HDR and auto colour management in Windows. For HDR, enable Use HDR and open an HDR test from All tests."
       ],
-      "should_see": "You should see four evenly progressing grey patches.",
-      "bad_example": "Bad example: two grey patches merge.",
-      "question": "Ready to check your display?",
-      "answers": [
-        "Ready",
-        "Still setting up"
-      ],
-      "pattern": "setup",
-      "pattern_label": "Setup swatches",
-      "settings": [
-        {
-          "id": "display",
-          "label": "Display",
-          "options": [
-            "Monitor",
-            "TV",
-            "Projector"
-          ]
-        },
-        {
-          "id": "panel",
-          "label": "Panel",
-          "options": [
-            "LCD",
-            "OLED",
-            "Other"
-          ]
-        }
-      ]
+      "should_see": "Work through SDR in order or jump straight to a colour or HDR test.",
+      "bad_example": "A meter is needed for measured colour accuracy.",
+      "pattern": "none",
+      "pattern_label": "",
+      "name": "Start here"
     },
     {
       "id": "levels",
       "headline": "Check the RGB range",
       "instructions": [
-        "Compare the dark top row and bright bottom row. Match the source and display RGB range."
+        "Match RGB output range in your GPU control panel to HDMI Black Level or RGB Range on the display. Full pairs with Full and Limited with Limited.",
+        "Black looks grey: check for Limited output into Full input. Crushed shadows and clipped whites: check for Full output into Limited input."
       ],
       "should_see": "You should see steps in both rows, although the first dark steps can be subtle.",
       "bad_example": "Bad example: dark and bright steps are crushed.",
-      "question": "How do the two rows look?",
-      "answers": [
-        "Both show steps",
-        "Crushed or clipped",
-        "Black looks washed out"
-      ],
       "pattern": "levels",
       "pattern_label": "Top: 0 1 2 3 4 5 6 7 8   Bottom: 247 248 249 250 251 252 253 254 255",
-      "display_hints": [
-        "Look for RGB range in your GPU control panel.",
-        "Look for HDMI Black Level or RGB Range on the TV, then match the GPU control panel.",
-        "Look for an RGB range or HDMI black-level option on the projector. Match the GPU setting."
-      ]
+      "name": "RGB range"
     },
     {
       "id": "black",
       "headline": "Adjust brightness for shadow detail",
       "instructions": [
-        "Use the display's black-level or brightness control. Raise it until the darkest steps start to separate, then back off if black turns grey.",
-        "Full-range PC output starts at code 0. This pattern compares above-black steps against 0."
+        "Adjust display Brightness or Black Level, not Backlight or OLED Pixel Brightness. Raise it until the first few strips appear, then lower it if the black surround turns grey.",
+        "Full-range RGB starts at code 0. Compare the above-black strips against the code-0 surround."
       ],
       "should_see": "You should see some above-black strips while the background stays black.",
       "bad_example": "Bad example: the darkest strips disappear.",
-      "question": "How does the black level look?",
-      "answers": [
-        "About right",
-        "Too bright",
-        "Too dark"
-      ],
       "pattern": "black",
       "pattern_label": "Codes: 0 1 2 3 4 6 8 12 16 24",
-      "display_hints": [
-        "Use a neutral room and disable automatic contrast.",
-        "Try the display's black-level control. Keep local dimming and shadow enhancement consistent.",
-        "Dim the room first. Stray light can hide small differences near black."
-      ]
+      "name": "Black level"
     },
     {
       "id": "white",
       "headline": "Lower contrast until the whites separate",
       "instructions": [
-        "Lower the display contrast if the brightest steps merge into one white area."
+        "Lower display Contrast or White Level until the brightest strips separate. Keep the highest white bright without merging the steps.",
+        "If Contrast cannot recover the steps, check the GPU and display RGB range match."
       ],
       "should_see": "You should see small steps all the way to the brightest white.",
       "bad_example": "Bad example: several top steps have merged.",
-      "question": "Can you separate the bright steps?",
-      "answers": [
-        "Yes",
-        "Some merge",
-        "Unsure"
-      ],
       "pattern": "white",
-      "pattern_label": "Codes: 235 240 245 247 249 251 253 254 255"
+      "pattern_label": "Codes: 235 240 245 247 249 251 253 254 255",
+      "name": "White clipping"
     },
     {
       "id": "gamma",
       "headline": "Match the fine pattern to the solid grey",
       "instructions": [
-        "Sit at your usual distance. If the checkerboard is visible, step back or squint slightly."
+        "Select a target below, then adjust the display Gamma or EOTF preset until each top checker and its bottom solid look equally bright from your normal seat.",
+        "If the preset has no useful effect, reset black level and white clipping first and disable dynamic contrast."
       ],
       "should_see": "You should see similar brightness in each top checker and the matching solid below.",
       "bad_example": "Bad example: the solid patches are too light.",
-      "question": "How do the solid patches look?",
-      "answers": [
-        "Too light",
-        "About right",
-        "Too dark"
-      ],
       "pattern": "gamma",
       "pattern_label": "Left to right: 25%, 50%, 75% checker coverage",
       "settings": [
@@ -173,109 +132,220 @@
             "BT.1886: for dark-room TVs. This approximation assumes ideal black."
           ]
         }
-      ]
+      ],
+      "name": "Gamma"
     },
     {
       "id": "sharpness",
       "headline": "Check clean edges and the whole border",
       "instructions": [
-        "Reduce sharpening until the halos disappear. Disable overscan or select the display's 1:1 mode if the border is cropped."
+        "Lower display Sharpness or Edge Enhancement until halos disappear. If the screen-edge marks are missing, disable Overscan or enable Just Scan, Screen Fit, or 1:1.",
+        "If lines look soft, select the display native resolution and verify that the GPU is not scaling the image."
       ],
       "should_see": "You should see crisp individual lines, one clean edge, four corners, and a mark on each screen edge.",
       "bad_example": "Bad example: bright and dark halos hug the edge.",
-      "question": "How does the pattern look?",
-      "answers": [
-        "Clean and complete",
-        "Halos or blur",
-        "Border cropped"
-      ],
       "pattern": "sharpness",
-      "pattern_label": "Single-pixel lines and corner markers"
+      "pattern_label": "Single-pixel lines and corner markers",
+      "name": "Sharpness"
     },
     {
       "id": "banding-a",
       "pattern": "ramp",
-      "headline": "Look for bands in the baseline ramp",
+      "headline": "Toggle dither on the same ramp",
       "instructions": [
-        "Keep dither off for this first pass. Look for broad bands, not individual pixels."
+        "Click the button below or press D to alternate between Off and blue-noise dither on the same ramp.",
+        "If dither helps, check GPU output depth and whether your source or player offers dithering. If both views show bands, turn off dynamic contrast and compare another input."
       ],
-      "should_see": "You should see a continuous-looking transition from black to white.",
+      "should_see": "When dither helps, stripes become finer and the gradient looks more continuous.",
       "bad_example": "Bad example: large stripes interrupt the transition.",
-      "question": "How does the baseline look?",
-      "answers": [
-        "Smooth",
-        "Visible bands",
-        "Unsure"
-      ],
-      "pattern_label": "6a  Baseline - dither off"
+      "pattern_label": "6a  Baseline - dither off",
+      "name": "Dither on / off"
     },
     {
       "id": "banding-b",
       "pattern": "banding_split",
       "headline": "Compare dither on and off",
       "instructions": [
-        "Drag the divider handle. Click the dither button or press D to change methods."
+        "Drag the divider and try each algorithm. The left stays Off; the right uses the selected dither.",
+        "If only the dithered side improves, try a higher GPU output depth or software dithering in your playback pipeline."
       ],
       "should_see": "Left uses no dither. Fine texture on the right can make bands less visible.",
       "bad_example": "Compare both sides at the same brightness along each vertical ramp.",
-      "question": "Which side looks smoother?",
-      "answers": [
-        "No dither",
-        "Dithered",
-        "About the same"
-      ],
-      "pattern_label": "6b  Dither comparison"
+      "pattern_label": "6b  Dither comparison",
+      "name": "Dither split"
     },
     {
       "id": "banding-c",
       "pattern": "banding_depth",
       "headline": "Compare 8-bit and 10-bit output",
       "instructions": [
-        "Use B or the button. F1 shows the format and fullscreen mode.",
-        "Turn off HDR and auto colour management before comparing."
+        "Switch depth with B or the button. Compare under the same display settings. The actual swapchain depth and presentation mode appear at top right.",
+        "If exclusive 10-bit helps, use 10-bit in your GPU control panel and keep the same signal path. If it does not, check GPU output depth, bandwidth limits, and the cable."
       ],
       "should_see": "The ramp should show the same range in both passes.",
       "bad_example": "Broad bands with no improvement are a clue only in granted Vulkan exclusive mode.",
-      "question": "Which pass looked smoother?",
+      "question": "Use the two observed passes to narrow down the cause.",
       "answers": [
         "10-bit smoother",
-        "Visible bands, no improvement",
-        "Unsure"
+        "Bands stayed the same",
+        "Could not tell"
       ],
-      "pattern_label": "6c  Output bit depth"
+      "pattern_label": "6c  Output bit depth",
+      "name": "8 / 10-bit probe"
     },
     {
       "id": "banding-d",
       "pattern": "banding_dark",
       "headline": "Check the shadows and midtones",
       "instructions": [
-        "The top ramp covers near-black. The lower ramp compares mid-grey. Press M or use the button to check the moving version."
+        "Turn off shadow boost, dynamic contrast and automatic brightness while comparing. Use the moving ramp to look for flicker or moving grain.",
+        "Select a symptom below for a concrete next check."
       ],
       "should_see": "Look for steps, moving grain, or flicker and note which region shows it.",
       "bad_example": "Look for coarse bands or moving texture that distracts from the gradient.",
-      "question": "Where do you see bands?",
+      "question": "Get a next step for the symptom you see.",
       "answers": [
-        "Only in shadows",
-        "Across both ramps",
-        "None or unsure"
+        "Shadows only",
+        "Both ranges",
+        "Moving grain / flicker"
       ],
       "pattern_label": "6d  Shadow and mid-grey ramps",
       "result_hints": [
-        [
-          "Shadow processing may be involved. Try disabling dynamic contrast and any shadow boost.",
-          "The signal chain or content may be involved. Compare another cable or source.",
-          "No likely cause identified from this comparison."
-        ],
-        [
-          "Local dimming, shadow processing, or automatic brightness limiting (ABL) may be involved. Try a neutral mode, lower OLED brightness, or compare local dimming settings.",
-          "The signal chain or content may be involved. Compare another HDMI input, cable or source.",
-          "No likely cause identified from this comparison."
-        ],
-        [
-          "Shadow processing or dynamic iris may be involved. Try disabling the iris or dynamic contrast.",
-          "The signal chain or content may be involved. Compare another input, cable or source.",
-          "No likely cause identified from this comparison."
-        ]
+        "Try turning off shadow enhancement. Compare local dimming On and Off; on a projector also compare dynamic iris modes.",
+        "Confirm 10-bit GPU output if available, try a different input or cable, and compare a known clean source with enhancements off.",
+        "Disable motion interpolation and dynamic contrast, then compare a fixed refresh rate or a different display input."
+      ],
+      "name": "Shadow banding"
+    },
+    {
+      "id": "grey_balance",
+      "name": "Greyscale tint",
+      "headline": "Check for tint in neutral greys",
+      "instructions": [
+        "Select a neutral colour-temperature preset such as Warm or D65. Disable eye comfort and ambient white balance.",
+        "If mid-grey or white is tinted, compare presets. Use RGB gain for bright greys or offset for dark greys only if your display exposes them."
+      ],
+      "should_see": "The same neutral hue should hold from dark grey to white.",
+      "bad_example": "Example: an uneven red bias in the greys.",
+      "pattern": "grey_balance",
+      "pattern_label": "SDR neutral tracking"
+    },
+    {
+      "id": "colour_steps",
+      "name": "Colour saturation",
+      "headline": "Separate the colour saturation steps",
+      "instructions": [
+        "Reset Color and Tint to their neutral values, disable vivid colour enhancement, and select Auto or Rec.709 gamut for SDR.",
+        "If highly saturated steps merge, lower Color/Saturation until they separate. Leave per-colour CMS controls for a measured calibration."
+      ],
+      "should_see": "Each row progresses from neutral grey to its own hue without merging the last steps.",
+      "bad_example": "Example: visibly oversaturated upper steps.",
+      "pattern": "colour_steps",
+      "pattern_label": "Rows: red / green / blue / cyan / magenta / yellow"
+    },
+    {
+      "id": "channel_clip",
+      "name": "RGB channel clipping",
+      "headline": "Keep bright RGB steps separate",
+      "instructions": [
+        "Lower Contrast if multiple rows clip. If just one clips after a white-balance adjustment, undo the change or reduce that channel RGB gain slightly.",
+        "Recheck white clipping and neutral grey after each change."
+      ],
+      "should_see": "Codes 224 through 255 should progress in each channel.",
+      "bad_example": "Example: highest codes are flattened.",
+      "pattern": "channel_clip",
+      "pattern_label": "Rows: red / green / blue   Codes: 224, 232, 240, 246, 250, 253, 255"
+    },
+    {
+      "id": "uniformity",
+      "name": "Solid fields",
+      "headline": "Inspect the screen with solid fields",
+      "instructions": [
+        "Choose black, grey, white, red, green, or blue. Move your pointer away and inspect from your usual seat.",
+        "If a shadow moves when local dimming is switched off, compare its settings. A fixed dot on one or more fields can be a panel pixel defect."
+      ],
+      "should_see": "Look for fixed bright or dark dots, tint patches, and uneven brightness.",
+      "bad_example": "A fixed patch across inputs is a display-side clue.",
+      "pattern": "uniformity",
+      "pattern_label": "SDR uniformity",
+      "settings": [
+        {
+          "id": "field",
+          "label": "Field",
+          "options": [
+            "5% grey",
+            "20% grey",
+            "50% grey",
+            "White",
+            "Red",
+            "Green",
+            "Blue",
+            "Black"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hdr_peak",
+      "name": "HDR peak clipping",
+      "headline": "Check HDR highlight clipping",
+      "instructions": [
+        "Use an HDR picture mode. Compare static tone mapping, HGiG, or the game tone-map mode if available; avoid changing modes during a pass.",
+        "If the top steps merge, compare tone-mapping modes or lower HDR Contrast if it restores separation. Use the last distinct target as a starting point for the source peak setting."
+      ],
+      "should_see": "Bright steps can roll off smoothly or merge depending on tone mapping.",
+      "bad_example": "",
+      "pattern": "hdr_peak",
+      "pattern_label": "HDR10 target cd/m2: 100 / 200 / 400 / 600 / 1000 / 1500 / 2000 / 4000"
+    },
+    {
+      "id": "hdr_black",
+      "name": "HDR near-black",
+      "headline": "Recover HDR shadow detail",
+      "instructions": [
+        "Adjust HDR Black Level or Shadow Detail. Raise it until some patches separate. Lower it if the code-zero surround turns grey.",
+        "Disable dynamic contrast, then compare local dimming with the same picture mode and viewing position."
+      ],
+      "should_see": "Black should remain dark while some above-black patches are visible.",
+      "bad_example": "",
+      "pattern": "hdr_black",
+      "pattern_label": "HDR10 target cd/m2: 0 / .005 / .01 / .02 / .05 / .1 / .5 / 1"
+    },
+    {
+      "id": "hdr_white",
+      "name": "HDR reference white",
+      "headline": "Set comfortable HDR paper white",
+      "instructions": [
+        "Compare the patches at your usual viewing distance. Change the game or playback app Paper White, UI Brightness or Diffuse White setting.",
+        "If HDR white looks blue or yellow, compare the HDR colour-temperature presets before changing white balance."
+      ],
+      "should_see": "Diffuse white should look comfortable while the separately tested peak highlights still stand out.",
+      "bad_example": "",
+      "pattern": "hdr_white",
+      "pattern_label": "HDR10 target cd/m2: 80 / 100 / 203 / 300"
+    },
+    {
+      "id": "hdr_windows",
+      "name": "HDR window size",
+      "headline": "Compare HDR brightness by window size",
+      "instructions": [
+        "Switch windows and watch the same 600 cd/m2 signal. Keep the display settings fixed between sizes.",
+        "If larger windows dim strongly, compare Peak Brightness or Energy Saving modes. If the change remains, calibrate with that limit in mind."
+      ],
+      "should_see": "Any brightness difference between windows comes from the path or display response, not a higher encoded patch value.",
+      "bad_example": "",
+      "pattern": "hdr_windows",
+      "pattern_label": "HDR10 600 cd/m2 through 2%, 10% and 25% of the pattern area",
+      "settings": [
+        {
+          "id": "hdr_window",
+          "label": "Area",
+          "options": [
+            "2%",
+            "10%",
+            "25%"
+          ]
+        }
       ]
     }
   ]

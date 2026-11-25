@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 
 #include "guide/guide.hpp"
+#include "patterns/hdr.hpp"
 #include "locale.hpp"
 #include "patterns/quantize.hpp"
 
@@ -102,9 +103,9 @@ TEST_CASE("Dither preserves exact endpoints and ramp spans every code in either 
 TEST_CASE("Embedded English text includes the display preparation and validates input")
 {
     const auto content = guide::loadContent(guide::englishJson);
-    REQUIRE(content.screens.size() == 10);
+    REQUIRE(content.screens.size() == 18);
     CHECK(content.screens.front().id == "intro");
-    CHECK(content.screens.front().instructions.front().find("HDR and auto colour management")
+    CHECK(content.screens.front().instructions.back().find("HDR and auto colour management")
           != std::string::npos);
     CHECK(content.screens[5].pattern == guide::Pattern::sharpness);
     CHECK_THROWS_AS(guide::loadContent("{"), std::runtime_error);
@@ -115,64 +116,54 @@ TEST_CASE("Embedded English text includes the display preparation and validates 
     CHECK_THROWS_WITH(guide::loadContent(duplicate), "Load embedded en.json: Invalid screen data for intro");
 }
 
-TEST_CASE("Navigation bounds, answers, dither and the exit menu are independent")
-{
-    using guide::Input;
-    auto content = guide::loadContent(guide::englishJson);
-    content.screens.resize(2);
-    content.screens.back().pattern = guide::Pattern::bandingSplit;
-    guide::Session session(content);
-    CHECK_FALSE(session.answer().has_value());
-    CHECK_FALSE(session.handle(Input::previous));
-    CHECK(session.screen().id == "intro");
-    CHECK_FALSE(session.handle(Input::dither));
-    CHECK(session.dither() == patterns::Dither::off);
-    CHECK_FALSE(session.handle(Input::down));
-    CHECK(session.answer() == 0);
-    CHECK_FALSE(session.handle(Input::confirm));
-    CHECK(session.screen().id == "levels");
-    CHECK_FALSE(session.answer().has_value());
-    CHECK_FALSE(session.handle(Input::down));
-    CHECK_FALSE(session.handle(Input::down));
-    CHECK(session.answer() == 1);
-    for (auto mode : {patterns::Dither::tpdf, patterns::Dither::ordered, patterns::Dither::blueNoise}) {
-        CHECK_FALSE(session.handle(Input::dither));
-        CHECK(session.dither() == mode);
-    }
-    CHECK_FALSE(session.handle(Input::next));
-    CHECK(session.screen().id == "levels");
-    CHECK_FALSE(session.handle(Input::previous));
-    CHECK(session.answer() == 0);
-    CHECK_FALSE(session.handle(Input::next));
-    CHECK(session.answer() == 1);
-    CHECK_FALSE(session.handle(Input::textSize));
-    CHECK(session.textScale() == 2);
-    CHECK_FALSE(session.handle(Input::menu));
-    CHECK(session.menuOpen());
-    CHECK_FALSE(session.handle(Input::previous));
-    CHECK(session.screen().id == "levels");
-    CHECK_FALSE(session.handle(Input::confirm));
-    CHECK_FALSE(session.menuOpen());
-    CHECK_FALSE(session.handle(Input::menu));
-    CHECK_FALSE(session.handle(Input::down));
-    CHECK(session.handle(Input::confirm));
-}
-
-TEST_CASE("Display type supplies the gamma default until manually overridden")
+TEST_CASE("Live test navigation, dither and direct gamma setting")
 {
     using namespace guide;
     const auto content = loadContent(englishJson);
     Session session(content);
-    CHECK(session.setting(Setting::gamma) == 0);
-    session.cycleSetting(0);
-    session.cycleSetting(1);
-    CHECK(session.setting(Setting::display) == 1);
-    CHECK(session.setting(Setting::panel) == 1);
-    CHECK(session.setting(Setting::gamma) == 2);
-    for (int i = 0; i < 4; ++i) session.handle(Input::next);
+    CHECK_FALSE(session.canAnswer());
+    session.handle(Input::down);
+    CHECK_FALSE(session.answer());
+    CHECK_FALSE(session.canGoBack());
+    session.startSuite(2);
+    CHECK(session.screen().pattern == Pattern::hdrPeak);
+    session.startSuite(1);
+    CHECK(session.screen().pattern == Pattern::greyBalance);
+    session.startSuite(0);
+    CHECK(session.screen().pattern == Pattern::levels);
+    for (int i = 0; i < 3; ++i) session.handle(Input::next);
     REQUIRE(session.screen().pattern == Pattern::gamma);
     session.cycleSetting(0, -1);
-    CHECK(session.setting(Setting::gamma) == 1);
+    CHECK(session.setting(Setting::gamma) == 2);
+    session.handle(Input::next);
+    session.handle(Input::next);
+    REQUIRE(session.screen().pattern == Pattern::ramp);
+    CHECK(session.dither() == patterns::Dither::off);
+    session.handle(Input::dither);
+    CHECK(session.baselineDitherEnabled());
+    CHECK(session.dither() == patterns::Dither::blueNoise);
+    session.handle(Input::dither);
+    CHECK(session.dither() == patterns::Dither::off);
+    session.handle(Input::next);
+    CHECK(session.screen().pattern == Pattern::bandingSplit);
+    CHECK(session.dither() == patterns::Dither::blueNoise);
+    session.handle(Input::dither);
+    CHECK(session.dither() == patterns::Dither::tpdf);
+    session.handle(Input::menu);
+    CHECK(session.menuOpen());
+    CHECK_FALSE(session.activateMenuChoice(15));
+    CHECK(session.screen().pattern == Pattern::hdrBlack);
+    CHECK_FALSE(session.menuOpen());
+}
+
+TEST_CASE("HDR PQ encodes reference luminances and quantizes absolute black")
+{
+    using namespace patterns;
+    CHECK(quantizeCode(pqEncode(0.0f), OutputDepth::unorm10) == 0u);
+    CHECK(pqEncode(100.0f) == doctest::Approx(0.5080784).epsilon(0.00002));
+    CHECK(pqEncode(1000.0f) == doctest::Approx(0.7518271).epsilon(0.00002));
+    CHECK(pqEncode(4000.0f) == doctest::Approx(0.9025724).epsilon(0.00002));
+    CHECK(pqEncode(10000.0f) == doctest::Approx(1.0));
 }
 
 TEST_CASE("Banding ramps preserve reference endpoints and expected step counts")
@@ -215,14 +206,13 @@ TEST_CASE("Bit-depth comparison never suggests truncation without two matching e
     }
 }
 
-TEST_CASE("Banding maps answers to display-specific hints and groups the four parts")
+TEST_CASE("Banding observations offer immediate next steps and group the four parts")
 {
     using namespace guide;
     const auto content = loadContent(englishJson);
     Session session(content);
-    session.cycleSetting(0);
     for (int i = 0; i < 8; ++i) session.handle(Input::next);
-    CHECK(session.stepCount() == 7);
+    CHECK(session.stepCount() == 15);
     CHECK(session.step() == 7);
     CHECK_FALSE(session.canAnswer());
     session.selectAnswer(1);
@@ -234,7 +224,7 @@ TEST_CASE("Banding maps answers to display-specific hints and groups the four pa
     session.handle(Input::next);
     CHECK(session.step() == 7);
     session.selectAnswer(0);
-    CHECK(session.resultHint().find("Local dimming") != std::string_view::npos);
+    CHECK(session.resultHint().find("local dimming") != std::string_view::npos);
     session.selectAnswer(1);
-    CHECK(session.resultHint().find("signal chain or content") != std::string_view::npos);
+    CHECK(session.resultHint().find("Confirm 10-bit GPU output") != std::string_view::npos);
 }

@@ -22,7 +22,7 @@ VkShaderModule shaderModule(VkDevice device, std::span<const std::uint32_t> word
 
 QuadPipeline createQuadPipeline(VkDevice device, VkFormat format,
                                 std::span<const std::uint32_t> fragmentWords,
-                                std::uint32_t pushBytes, bool blendEnabled)
+                                std::uint32_t pushBytes, bool blendEnabled, bool hdrUi)
 {
     QuadPipeline quad{};
     VkShaderModule vertex = VK_NULL_HANDLE;
@@ -38,11 +38,14 @@ QuadPipeline createQuadPipeline(VkDevice device, VkFormat format,
         check(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &quad.layout),
                   "Create quad layout");
 
+        const VkSpecializationMapEntry hdrEntry{0, 0, sizeof(std::uint32_t)};
+        const std::uint32_t hdrValue = hdrUi ? 1u : 0u;
+        const VkSpecializationInfo hdrSpecialization{1, &hdrEntry, sizeof(hdrValue), &hdrValue};
         const std::array shaderStages{
             VkPipelineShaderStageCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                                            nullptr, 0, VK_SHADER_STAGE_VERTEX_BIT, vertex, "main", nullptr},
             VkPipelineShaderStageCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                                           nullptr, 0, VK_SHADER_STAGE_FRAGMENT_BIT, fragment, "main", nullptr},
+                                           nullptr, 0, VK_SHADER_STAGE_FRAGMENT_BIT, fragment, "main", blendEnabled ? &hdrSpecialization : nullptr},
         };
         VkPipelineVertexInputStateCreateInfo inputs{};
         inputs.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
