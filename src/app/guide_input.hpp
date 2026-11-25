@@ -19,7 +19,7 @@ public:
     bool mouse(const SDL_Event& event, bool licensesOpen, bool& running);
     bool syncCursor(ui::CursorTimer::Clock::time_point now);
     int waitTimeout(int otherwise, ui::CursorTimer::Clock::time_point now) const;
-    void invalidateTargets() { targets_.clear(); pointer_.cancel(); }
+    void invalidateTargets() { targets_.clear(); pointer_.cancel(); session_.divider().end(); }
     void leave();
 
     const ui::Pointer& pointer() const { return pointer_; }
@@ -28,6 +28,7 @@ public:
 
 private:
     bool activate(ui::Action action);
+    std::optional<ui::Rect> dividerRegion() const;
     ui::Point toPixels(float x, float y) const;
 
     SDL_Window* window_;

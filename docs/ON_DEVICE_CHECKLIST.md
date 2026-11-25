@@ -50,3 +50,19 @@ Every item below needs on-device checking. The build and CPU tests provide no vi
 - [ ] Move between a brighter UI screen and a dark pattern screen. Check for a visible brightness shift on the display. Repeat on an OLED or projector with automatic brightness controls in its normal configuration.
 - [ ] Toggle Reduce motion and compare screen and menu transitions. Confirm hover and focus inside the bands remain instantaneous when a pattern is visible, and that no UI covers any pattern pixels.
 - [ ] Check the icon in Windows Explorer and the window title in task switching.
+
+## M4 banding checks
+
+- [ ] Compare baseline bands with the coarse thumbnail. Check that F1 reports the active 8-bit UNORM format.
+- [ ] Drag the split to each side with the mouse. Both sides should keep their endpoints and brightness alignment. Switch among all three dither algorithms and verify that the off side stays unchanged.
+- [ ] On a 10-bit-capable setup, switch between 8 and 10 bits at least 20 times. Verify the format and granted exclusive state in F1 every time. Repeat in borderless mode, after Alt-Tab, and after a monitor or desktop mode change. Confirm no hang, stale result or incorrect format label.
+- [ ] On a surface without a supported 10-bit format, verify the explanation and continue to the next screen. In borderless mode with both formats available, check the inconclusive result. With granted exclusive mode on both passes, check each answer and the likely-cause wording.
+- [ ] Compare shadows and mid-grey with and without motion on LCD, OLED and projector. Confirm the hints follow the selected display type and describe likely causes. Check for actual temporal artifacts and check the moving ramp against the documented phase behavior.
+
+## Live SDR colour and HDR10
+
+- [ ] Open each suite directly. Confirm the signal card is visible without F1 and expands with F1. Open All tests and jump to any test. Check for readable instructions at F3 sizes and confirm the UI does not cover patterns.
+- [ ] Open the first dither ramp and toggle with D and the mouse button. Confirm the main ramp changes at the same size and the coarse thumbnail stays unchanged. Confirm the split page still cycles all three algorithms.
+- [ ] Adjust white balance, saturation and contrast against their respective SDR patterns. Confirm the instructions point to controls that apply to the active picture mode. Inspect all solid fields.
+- [ ] Enter HDR with Windows HDR disabled. Verify the setup message and no PQ test output. Enable Windows HDR and verify the signal card reports HDR10/PQ only when a compatible surface is active. On an unsupported path, confirm the explicit unavailable state. Return to SDR and verify the swapchain resumes SDR when Windows HDR is off.
+- [ ] Check the HDR peak, near-black, reference white and window-size tests on a Windows HDR display. Verify the display actually enters its HDR mode and that the actual output and metadata match a capture or other independent reference where possible. Check if the display maps the target patches as expected.

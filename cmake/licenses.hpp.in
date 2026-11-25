@@ -3,7 +3,7 @@
 #include <string_view>
 
 namespace calib::ui {
-inline constexpr std::string_view licenseText = R"LICENSE(Geist Mono
+inline constexpr std::string_view licenseText = R"LICENSE(Inter
 @font_license@
 SDL
 @sdl_license@

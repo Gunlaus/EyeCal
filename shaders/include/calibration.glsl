@@ -8,13 +8,6 @@ uint columnIndex(uint x, uint width, uint count)
     return min((x * count) / width, count - 1u);
 }
 
-float setupSwatches(uvec2 p, uvec2 size, bool bad)
-{
-    const uint levels[4] = uint[4](48u, 64u, 80u, 96u);
-    uint index = columnIndex(p.x, size.x, 4u);
-    return code(levels[bad && index == 1u ? 0u : index]);
-}
-
 float rangeSteps(uvec2 p, uvec2 size, bool bad)
 {
     uint column = columnIndex(p.x, size.x, 9u);

@@ -22,6 +22,8 @@ std::optional<Input> navigationKey(SDL_Keycode key)
     case SDLK_ESCAPE: return Input::menu;
     case SDLK_D: return Input::dither;
     case SDLK_F3: return Input::textSize;
+    case SDLK_B: return Input::bitDepth;
+    case SDLK_M: return Input::movePattern;
     default: return std::nullopt;
     }
 }
@@ -68,6 +70,14 @@ ui::Point GuideInput::toPixels(float x, float y) const
             y * static_cast<float>(pixelsHigh) / static_cast<float>(height)};
 }
 
+std::optional<ui::Rect> GuideInput::dividerRegion() const
+{
+    for (const auto& target : targets_) {
+        if (target.action.command == Command::divider) return target.bounds;
+    }
+    return std::nullopt;
+}
+
 bool GuideInput::activate(Action action)
 {
     switch (action.command) {
@@ -97,6 +107,19 @@ bool GuideInput::activate(Action action)
         session_.cycleSetting(action.index);
         invalidateTargets();
         return false;
+    case Command::dither:
+    case Command::bitDepth:
+    case Command::movePattern:
+        invalidateTargets();
+        return session_.handle(action.command == Command::dither ? Input::dither :
+            action.command == Command::bitDepth ? Input::bitDepth : Input::movePattern);
+    case Command::startSuite:
+        session_.startSuite(action.index);
+        invalidateTargets();
+        return false;
+    case Command::divider:
+    case Command::probeRegion:
+        return false;
     case Command::menuChoice:
         invalidateTargets();
         return session_.activateMenuChoice(action.index);
@@ -111,7 +134,7 @@ bool GuideInput::key(const SDL_KeyboardEvent& event, bool& running)
         return true;
     }
     if (const auto number = numberKey(event.key);
-        number && !session_.menuOpen() && *number < session_.screen().answers.size()) {
+        number && !session_.menuOpen() && session_.canAnswer() && *number < session_.screen().answers.size()) {
         session_.selectAnswer(*number);
         pointer_.focus(Action{Command::answer, *number});
         return true;
@@ -132,7 +155,8 @@ bool GuideInput::key(const SDL_KeyboardEvent& event, bool& running)
     const auto& previousScreen = session_.screen();
     running = !session_.handle(*input);
     if (&previousScreen != &session_.screen() || menuWasOpen != session_.menuOpen() ||
-        *input == Input::textSize || *input == Input::dither) {
+        *input == Input::textSize || *input == Input::dither ||
+        *input == Input::bitDepth || *input == Input::movePattern) {
         invalidateTargets();
     }
     if (session_.menuOpen()) {
@@ -161,8 +185,11 @@ bool GuideInput::mouse(const SDL_Event& event, bool licensesOpen, bool& running)
         if (event.motion.xrel != 0.0f || event.motion.yrel != 0.0f) {
             timer_.motion(Clock::now());
         }
-        pointer_.move(toPixels(event.motion.x, event.motion.y));
-        return keyboard || oldHover != pointer_.hovered(targets_);
+        const auto point = toPixels(event.motion.x, event.motion.y);
+        pointer_.move(point);
+        const auto region = dividerRegion();
+        const bool dragged = region && session_.divider().drag(*region, point, ui::dividerMinimumPane);
+        return dragged || keyboard || oldHover != pointer_.hovered(targets_);
     }
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP: {
@@ -179,7 +206,16 @@ bool GuideInput::mouse(const SDL_Event& event, bool licensesOpen, bool& running)
         }
         const auto position = toPixels(event.button.x, event.button.y);
         if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            const auto region = dividerRegion();
+            if (region && position.y >= region->y - ui::dividerHandleRadius &&
+                session_.divider().begin(*region, {position.x, std::max(position.y, static_cast<float>(region->y))},
+                                         ui::dividerHandleRadius, ui::dividerMinimumPane)) {
+                pointer_.cancel();
+                return true;
+            }
             pointer_.press(targets_, position);
+        } else if (session_.divider().dragging()) {
+            session_.divider().end();
         } else if (const auto action = pointer_.release(targets_, position)) {
             running = !activate(*action);
         }
@@ -232,6 +268,7 @@ void GuideInput::leave()
 {
     timer_.reset();
     pointer_.leave();
+    session_.divider().end();
 }
 
 } // namespace calib::app

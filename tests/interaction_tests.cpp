@@ -135,6 +135,8 @@ TEST_CASE("Direct answer selection, cursor pinning and disabled navigation follo
     using namespace calib::guide;
     auto content = loadContent(englishJson);
     content.screens.resize(2);
+    content.screens.front().question = "Test question";
+    content.screens.front().answers = {"One", "Two"};
     content.screens.back().id = "summary";
     Session session(content);
     CHECK_FALSE(session.canGoBack());

@@ -17,6 +17,7 @@ struct Frame {
     const ui::Pointer& pointer;
     bool pointerVisible;
     float chromeMotion;
+    float patternPhase;
     bool diagnostics;
     bool exclusiveRequested;
     bool focused;
@@ -35,12 +36,15 @@ public:
     void initialize(SDL_Window* window);
     void invalidate() { rebuild_ = true; }
     void dropSwapchain();
+    bool supportsTenBit() const { return supportsTenBit_; }
+    bool activeTenBit() const;
+    bool exclusiveGranted() const { return exclusiveAcquired_; }
 
     // False means the window or swapchain is still settling. Try again on the next event tick.
     bool draw(const Frame& frame, std::vector<ui::HitTarget>& targets);
 
 private:
-    bool buildSwapchain(bool exclusiveRequested);
+    bool buildSwapchain(bool exclusiveRequested, bool requestTenBit, bool requestHdr);
     std::vector<ui::HitTarget> record(std::uint32_t index, const Frame& frame);
 
     SDL_Window* window_ = nullptr;
@@ -64,6 +68,12 @@ private:
     bool exclusiveEnabled_ = false;
     bool exclusiveAcquired_ = false;
     bool rebuild_ = true;
+    bool previousDepthRequest_ = false;
+    bool supportsTenBit_ = false;
+    bool hdrColorspaceEnabled_ = false;
+    bool hdrMetadataEnabled_ = false;
+    bool previousHdrRequest_ = false;
+    bool activeHdr_ = false;
 };
 
 } // namespace calib::vk

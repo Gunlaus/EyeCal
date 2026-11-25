@@ -1,4 +1,7 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "pq.glsl"
+layout(constant_id = 0) const uint hdrUi = 0u;
 layout(push_constant) uniform Overlay {
     ivec4 rect;
     ivec2 viewport;
@@ -13,10 +16,10 @@ layout(location = 0) out vec4 color;
 
 float distanceSample(ivec2 cell)
 {
-    if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(12, 20)))) {
+    if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(16, 16)))) {
         return 0.0;
     }
-    int index = cell.y * 12 + cell.x;
+    int index = cell.y * 16 + cell.x;
     int word = index >> 4;
     uint packed = overlay.glyph[word >> 2][word & 3];
     return float((packed >> (2 * (index & 15))) & 3u);
@@ -60,5 +63,15 @@ void main()
         float lower = mix(distanceSample(cell + ivec2(0, 1)),
                           distanceSample(cell + ivec2(1, 1)), fraction.x);
         color.a *= smoothstep(0.9, 2.1, mix(upper, lower, fraction.y));
+    }
+    if (hdrUi != 0u) {
+        vec3 srgb = clamp(color.rgb, vec3(0.0), vec3(1.0));
+        vec3 rgb = mix(srgb / 12.92, pow((srgb + 0.055) / 1.055, vec3(2.4)),
+                       greaterThan(srgb, vec3(0.04045)));
+        mat3 to2020 = mat3(0.627404, 0.069097, 0.016391,
+                           0.329283, 0.919540, 0.088013,
+                           0.043313, 0.011362, 0.895595);
+        vec3 nits = 100.0 * (to2020 * rgb);
+        color.rgb = vec3(pqEncode(nits.r), pqEncode(nits.g), pqEncode(nits.b));
     }
 }

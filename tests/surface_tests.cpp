@@ -59,3 +59,30 @@ TEST_CASE("Swapchain buffering respects both bounded and unbounded surface limit
     caps.maxImageCount = 0;
     CHECK(chooseImageCount(caps) == 4);
 }
+
+TEST_CASE("10-bit probe accepts only explicitly enumerated SDR UNORM formats")
+{
+    constexpr auto sdr = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    constexpr std::array mixed{
+        VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, sdr},
+        VkSurfaceFormatKHR{VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_HDR10_ST2084_EXT},
+        VkSurfaceFormatKHR{VK_FORMAT_A2R10G10B10_UNORM_PACK32, sdr},
+        VkSurfaceFormatKHR{VK_FORMAT_A2B10G10R10_UNORM_PACK32, sdr}
+    };
+    CHECK_FALSE(chooseTenBitFormat(std::span{mixed}.first(2)));
+    CHECK(chooseTenBitFormat(std::span{mixed}.first(3))->format == VK_FORMAT_A2R10G10B10_UNORM_PACK32);
+    CHECK(chooseTenBitFormat(mixed)->format == VK_FORMAT_A2B10G10R10_UNORM_PACK32);
+    CHECK_FALSE(isTenBitFormat(chooseSurfaceFormat(mixed)->format));
+}
+
+TEST_CASE("HDR10 accepts packed 10-bit PQ and rejects SDR or non-UNORM attachments")
+{
+    const std::array pairs{
+        VkSurfaceFormatKHR{VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR},
+        VkSurfaceFormatKHR{VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_HDR10_ST2084_EXT},
+        VkSurfaceFormatKHR{VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_HDR10_ST2084_EXT}
+    };
+    CHECK_FALSE(chooseHdr10Format(std::span{pairs}.first(2)));
+    REQUIRE(chooseHdr10Format(pairs));
+    CHECK(chooseHdr10Format(pairs)->format == VK_FORMAT_A2R10G10B10_UNORM_PACK32);
+}

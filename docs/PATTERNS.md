@@ -21,7 +21,7 @@ The shader takes display-encoded values and computes `floor(value * maxCode + of
 
 See [the blue-noise asset origin and licence](../THIRD_PARTY.md) and [Ulichney’s void-and-cluster paper](https://doi.org/10.1117/12.152707).
 
-Levels, PLUGE-style black level, white clip, gamma, sharpness, banding, flat fields and the synthetic reference scene are scheduled for later milestones. Add exact code values, rationale and citations when introducing each pattern.
+Flat fields and the synthetic reference scene are scheduled for a later milestone.
 
 ## M3 calibration patterns
 
@@ -35,3 +35,25 @@ All values below are 8-bit full-range RGB codes, with dither Off. A strip index 
 | 3. White | Codes 235, 240, 245, 247, 249, 251, 253, 254, 255. Bad example sets every value from 247 onward to 255. | [Microsoft nominal-range definitions](https://learn.microsoft.com/en-us/windows/win32/api/mfobjects/ne-mfobjects-mfnominalrange) |
 | 4. Gamma | Three 2 × 2 tiles contain 1, 2 and 3 white pixels respectively, with codes 0 and 255. Solids are nearest codes to the inverse display transfer at linear fractions 0.25, 0.5 and 0.75. sRGB yields 137, 188, 225. Gamma 2.2 yields 136, 186, 224. Ideal-black BT.1886 yields 143, 191, 226. The bad example adds 0.14 encoded value before quantization, clamped to white. | [W3C sRGB transfer function](https://www.w3.org/TR/css-color-4/#color-conversion-code) · [ITU-R BT.1886](https://www.itu.int/rec/R-REC-BT.1886) |
 | 5. Sharpness | Alternating 64/192 single-pixel lines and a clean 64/192 edge. Border and outer-screen marks use code 224. Corner marks use 255. Bad example substitutes 16 and 240 in the two columns adjacent to the edge on each side. | [Vulkan fragment coordinates](https://docs.vulkan.org/refpages/latest/refpages/source/FragCoord.html) |
+
+## M4 banding diagnostic
+
+| Part | Exact signal and interpretation |
+| --- | --- |
+| 6a. Baseline | Vertical encoded ramp from 0 to 1 across the region, with code `round(255*y/(h-1))` on the 8-bit path and no dither. One row is black. The coarse thumbnail uses 8 evenly spaced code levels. |
+| 6b. Dither comparison | The same normalized ramp is shared row-for-row across the two sides. The left side uses no dither and the right uses the selected ordered, blue-noise, or TPDF offset before quantization. The divider changes the split column only. |
+| 6c. Depth | The same horizontal encoded ramp and region are drawn for both passes with dither off. On an 8-bit surface the code maximum is 255, and on a 10-bit surface it is 1023. A surface format states attachment precision. Actual scanout depth requires independent verification. |
+| 6d. Shadows | Upper region maps linear light 0–0.20 through the sRGB transfer function. Lower region maps linear light 0.20–0.40. Both span the full width with dither off. At 8-bit the endpoint pairs are 0–124 and 124–170. In motion mode, replace normalized horizontal position `x` with `1 - abs(2 * fract(0.5 * x + phase) - 1)`. Phase moves at one cycle per 16 seconds on a monotonic clock. This is a visually moving stimulus for observing temporal artifacts. |
+
+Underlying conventions are documented by [Khronos on swapchain format pairs](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormatsKHR.html), the [Vulkan fixed-point conversion rules](https://docs.vulkan.org/spec/latest/chapters/fundamentals.html#fundamentals-fixedfpconv), and the [W3C sRGB conversion code](https://www.w3.org/TR/css-color-4/#color-conversion-code).
+
+## Live SDR colour and HDR10
+
+- **Dither on/off.** The first banding screen toggles blue noise in the main vertical ramp. It uses the same geometry, code range and seed for both states. The coarse thumbnail stays undithered.
+- **Greyscale tint.** Neutral RGB triplets 16, 32, 64, 96, 128, 176, 224 and 255. The example adds `(0.08, 0, -0.04) × sin(π × grey)` in normalized encoded RGB. White-balance accuracy requires a meter.
+- **Saturation and channel clipping.** Six RGB/CMY rows mix code-128 neutral with their respective primary/secondary at strengths 0, 64, 128, 166, 191, 217, 242 and 255 over 255. The example clips its last three columns to full saturation. The separate RGB clipping test uses 224, 232, 240, 246, 250, 253 and 255 in one channel at a time. These are signal comparisons rather than measured gamut/saturation targets.
+- **Uniformity.** Flat 8-bit code values 13, 51, 128, 255, red, green, blue and black in the pattern region.
+- **HDR clipping and shadows.** BT.2100 PQ / BT.2020 neutral values with a code-zero surround. Highlights use a 20%-height strip with 100, 200, 400, 600, 1000, 1500, 2000 and 4000 cd/m² targets. Shadow patches use a half-height strip with 0, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5 and 1 cd/m² targets. At 10-bit, several low levels may be hard to distinguish on a given display.
+- **HDR reference white and window response.** Reference white uses 80, 100, 203 and 300 cd/m² in a central band. The area test uses the same encoded 600 cd/m² patch at 2%, 10% and 25% of the available pattern region. All HDR levels use the same PQ inverse EOTF before 10-bit UNORM quantization.
+
+See [ITU-R BT.2100](https://www.itu.int/rec/R-REC-BT.2100) for PQ and BT.2020, and [Khronos colour space semantics](https://docs.vulkan.org/refpages/latest/refpages/source/VkColorSpaceKHR.html) for the Vulkan HDR10/ST 2084 surface.

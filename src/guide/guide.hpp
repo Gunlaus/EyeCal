@@ -1,6 +1,8 @@
 #pragma once
 
+#include "patterns/banding.hpp"
 #include "patterns/quantize.hpp"
+#include "ui/interaction.hpp"
 
 #include <array>
 #include <cstddef>
@@ -11,8 +13,14 @@
 
 namespace calib::guide {
 
-enum class Pattern { none, ramp, setup, levels, black, white, gamma, sharpness };
-enum class Setting { display, panel, gamma };
+enum class Pattern { none = 0, ramp = 1, levels = 3, black, white, gamma, sharpness, bandingSplit, bandingDepth, bandingDark, greyBalance, colourSteps, channelClip, uniformity, hdrPeak, hdrBlack, hdrWhite, hdrWindows };
+enum class Setting { gamma, field, hdrWindow };
+
+constexpr bool isHdr(Pattern pattern)
+{
+    return pattern == Pattern::hdrPeak || pattern == Pattern::hdrBlack ||
+           pattern == Pattern::hdrWhite || pattern == Pattern::hdrWindows;
+}
 
 struct ChoiceSetting {
     Setting kind;
@@ -32,12 +40,11 @@ struct Screen {
     Pattern pattern;
     std::string patternLabel;
     std::vector<ChoiceSetting> settings;
-    std::vector<std::string> displayHints;
+    std::vector<std::string> resultHints;
+    std::string name;
 };
 
 struct Controls {
-    std::string navigation;
-    std::string answer;
     std::array<std::string, 3> navigationButtons;
     std::string preview;
     std::string intro;
@@ -46,9 +53,15 @@ struct Controls {
     std::string textOverflow;
     std::string menuTitle;
     std::string menuHelp;
-    std::array<std::string, 3> menuChoices;
+    std::array<std::string, 2> menuChoices;
     std::array<std::string, 2> toggleStates;
     std::string stepSeparator;
+    std::array<std::string, 6> probeResults;
+    std::array<std::string, 2> depthButtons;
+    std::array<std::string, 2> motionButtons;
+    std::array<std::string, 2> baselineButtons;
+    std::array<std::string, 5> displayMessages;
+    std::array<std::string, 3> startButtons;
 };
 
 struct Content {
@@ -58,7 +71,7 @@ struct Content {
 
 Content loadContent(std::string_view json);
 
-enum class Input { previous, next, up, down, confirm, menu, dither, textSize };
+enum class Input { previous, next, up, down, confirm, menu, dither, textSize, bitDepth, movePattern };
 
 class Session {
 public:
@@ -70,14 +83,30 @@ public:
     void cycleSetting(std::size_t localIndex, int direction = 1);
     void selectAnswer(std::size_t answer);
     bool activateMenuChoice(std::size_t choice);
+    void startSuite(std::size_t suite);
+    std::size_t menuCount() const { return content_.screens.size() + controls().menuChoices.size(); }
+    std::string menuLabel(std::size_t choice) const;
+    bool menuCurrent(std::size_t choice) const { return choice == index_; }
+    bool baselineDitherEnabled() const { return baselineDither_; }
     bool canGoBack() const { return index_ > 0; }
     bool canGoNext() const { return index_ + 1 < content_.screens.size(); }
     bool keepsCursorVisible() const { return menuOpen_ || screen().id == "summary"; }
     const Screen& screen() const { return content_.screens[index_]; }
     const Controls& controls() const { return content_.controls; }
     std::optional<std::size_t> answer() const { return answers_[index_]; }
-    std::size_t step() const { return index_ + 1; }
-    std::size_t stepCount() const { return content_.screens.size(); }
+    std::size_t step() const;
+    std::size_t stepCount() const;
+    bool wantsTenBit() const { return screen().pattern == Pattern::bandingDepth && tenBit_; }
+    bool movingPattern() const { return screen().pattern == Pattern::bandingDark && moving_ && !menuOpen_; }
+    patterns::BitDepthProbe& probe() { return probe_; }
+    const patterns::BitDepthProbe& probe() const { return probe_; }
+    ui::Divider& divider() { return divider_; }
+    const ui::Divider& divider() const { return divider_; }
+    std::string_view resultHint() const;
+    bool canAnswer() const {
+        return !screen().answers.empty() && (screen().pattern != Pattern::bandingDepth || probe_.ready());
+    }
+    void resetProbe();
     bool reduceMotion() const { return reduceMotion_; }
     bool menuOpen() const { return menuOpen_; }
     std::size_t menuChoice() const { return menuChoice_; }
@@ -85,16 +114,20 @@ public:
     int textScale() const { return textScale_; }
 
 private:
+    void jump(std::size_t index);
     const Content& content_;
     std::vector<std::optional<std::size_t>> answers_;
     std::size_t index_ = 0;
     std::size_t menuChoice_ = 0;
     bool menuOpen_ = false;
     bool reduceMotion_ = false;
-    std::size_t displayType_ = 0;
-    std::size_t panelType_ = 0;
-    std::optional<std::size_t> gamma_;
-    patterns::Dither previewDither_ = patterns::Dither::off;
+    std::array<std::size_t, 3> settings_{};
+    bool baselineDither_ = false;
+    patterns::BitDepthProbe probe_;
+    ui::Divider divider_{ui::Axis::x};
+    bool tenBit_ = false;
+    bool moving_ = false;
+    patterns::Dither previewDither_ = patterns::Dither::blueNoise;
     int textScale_ = 1;
 };
 
