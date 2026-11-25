@@ -6,9 +6,9 @@ Can you make out the darkest step? Do the brightest whites still look distinct? 
 
 EyeCal is designed for people without a colorimeter. Measuring color accuracy still requires a meter.
 
-> **Project status · Milestone 1**
+> **Project status · Milestone 2**
 >
-> The Windows prototype, `EyeCal.exe`, opens a fullscreen grey field and shows how the app is presenting it. The guided calibration screens are planned for later milestones.
+> `EyeCal.exe` opens an SDR setup checklist and a grey-ramp preview. The preview compares the main ramp with deliberately coarse bands and lets you try four dither modes. The full calibration walkthrough is planned for later milestones.
 
 ## Try the Windows prototype
 
@@ -19,7 +19,13 @@ You’ll need Windows 10 or 11 and a Vulkan 1.3 graphics driver. Set Windows to 
 | **F1** | Show or hide the swapchain format, pixel dimensions, present mode, and HDR status |
 | **F11** | Switch fullscreen modes. F1 shows whether Vulkan granted exclusive presentation |
 | **F2** | Read the bundled licenses. Use **Page Up** and **Page Down** to move between pages |
-| **Esc** | Exit |
+| **Left / Right**, **Enter** | Go back or forward through the guide |
+| **Up / Down** | Choose an answer or menu item |
+| **D** | Cycle dithering on the ramp preview |
+| **F3** | Cycle text sizes |
+| **Esc** | Open the menu to resume or exit |
+
+The same actions are available in the on-screen Back, Next, and Menu buttons. Click a choice or press its number to answer. Scroll down to advance, scroll up or right-click to go back. Move the mouse to reveal the cursor. It hides after two seconds of inactivity and stays visible on the menu. Tab and Shift+Tab move between available buttons, and Enter activates the focused button.
 
 ## What’s planned
 
@@ -38,7 +44,7 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The executable is at `build/Release/EyeCal.exe`. SDL, volk, shaders, and the font atlas are built in. The app uses the system graphics driver and makes no network requests.
+The executable is at `build/Release/EyeCal.exe`. SDL, volk, shaders, the font atlas, and the English guide are built in. The app uses the system graphics driver and makes no network requests.
 
 <details>
 <summary>Optional Linux build and CPU-only checks</summary>

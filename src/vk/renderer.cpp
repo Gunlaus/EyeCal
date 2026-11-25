@@ -1,4 +1,6 @@
 #include "vk/renderer.hpp"
+#include "patterns/ramp.hpp"
+#include "ui/guide_view.hpp"
 #include "vk/check.hpp"
 #include "vk/surface_policy.hpp"
 
@@ -76,7 +78,7 @@ std::string_view colorStatus(platform::OutputColor state)
     case platform::OutputColor::hdr:
         return "HDR is on. Turn it off for SDR tests.";
     case platform::OutputColor::sdr:
-        return "Windows reports SDR";
+        return "Windows reports SDR. ACM status unknown.";
     case platform::OutputColor::unknown:
         return "HDR status unknown. Check display settings.";
     }
@@ -234,7 +236,9 @@ void Renderer::dropSwapchain()
 {
     if (swapchain_) {
         vkDeviceWaitIdle(device_);
-        ui::destroyOverlay(device_, overlay_);
+        destroyQuadPipeline(device_, ramp_);
+        ramp_ = {};
+        destroyQuadPipeline(device_, overlay_);
         overlay_ = {};
         for (auto semaphore : presented_) {
             vkDestroySemaphore(device_, semaphore, nullptr);
@@ -337,13 +341,12 @@ bool Renderer::buildSwapchain(bool exclusiveRequested)
         check(vkCreateSemaphore(device_, &sem, nullptr, &presented_[index]), "Create present semaphore");
     }
     overlay_ = ui::createOverlay(device_, format_);
+    ramp_ = patterns::createRamp(device_, format_);
     rebuild_ = false;
     return true;
 }
 
-void Renderer::record(std::uint32_t index, bool diagnostics, bool modeRequested,
-                      platform::OutputColor outputColor, std::string_view notice,
-                      std::span<const std::string_view> licensePage)
+std::vector<ui::HitTarget> Renderer::record(std::uint32_t index, const Frame& frame)
 {
     check(vkResetCommandBuffer(command_, 0), "Reset command buffer");
     VkCommandBufferBeginInfo begin{};
@@ -378,37 +381,32 @@ void Renderer::record(std::uint32_t index, bool diagnostics, bool modeRequested,
     render.pColorAttachments = &target;
     vkCmdBeginRendering(command_, &render);
 
-    std::array<std::string_view, 9> lines{};
+    std::array<std::string_view, 5> lines{};
     std::size_t lineCount = 0;
-    std::string format;
-    std::string extent;
-    if (diagnostics) {
-        format = "Format: " + std::string(formatName(format_));
-        extent = "Extent: " + std::to_string(extent_.width) + " x " + std::to_string(extent_.height);
-        lines[lineCount++] = "EyeCal / M1";
-        lines[lineCount++] = format;
-        lines[lineCount++] = extent;
-        lines[lineCount++] = "Present: FIFO";
+    std::string surface;
+    if (frame.diagnostics) {
+        surface = std::string(formatName(format_)) + "   " + std::to_string(extent_.width) +
+                  " x " + std::to_string(extent_.height) + "   FIFO";
+        lines[lineCount++] = surface;
         lines[lineCount++] = exclusiveAcquired_ ? "Fullscreen: Vulkan exclusive"
-            : modeRequested ? "Fullscreen: mode set, Vulkan not exclusive"
-                            : "Fullscreen: borderless";
-        lines[lineCount++] = "F1 Hide   F11 Toggle   Esc Exit";
+            : frame.exclusiveRequested ? "Fullscreen: mode set, Vulkan not exclusive"
+                                       : "Fullscreen: borderless";
     }
-    if (diagnostics || outputColor == platform::OutputColor::hdr) {
-        lines[lineCount++] = colorStatus(outputColor);
+    if (frame.diagnostics || frame.outputColor == platform::OutputColor::hdr) {
+        lines[lineCount++] = colorStatus(frame.outputColor);
     }
-    if (diagnostics) {
-        lines[lineCount++] = "F2 Licenses";
+    if (!frame.notice.empty()) {
+        lines[lineCount++] = frame.notice;
     }
-    if (!notice.empty()) {
-        lines[lineCount++] = notice;
-    }
-    if (licensePage.empty()) {
-        ui::drawOverlay(command_, overlay_, extent_, std::span{lines}.first(lineCount));
+    std::vector<ui::HitTarget> targets;
+    if (frame.licensePage.empty()) {
+        targets = ui::drawGuide(command_, overlay_, ramp_, extent_, patterns::OutputDepth::unorm8,
+                                frame.guide, std::span{lines}.first(lineCount), frame.pointer,
+                                frame.pointerVisible);
     } else {
-        std::vector<std::string_view> page(licensePage.begin(), licensePage.end());
-        if (outputColor == platform::OutputColor::hdr) {
-            page.insert(page.begin(), colorStatus(outputColor));
+        std::vector<std::string_view> page(frame.licensePage.begin(), frame.licensePage.end());
+        if (frame.outputColor == platform::OutputColor::hdr) {
+            page.insert(page.begin(), colorStatus(frame.outputColor));
         }
         ui::drawOverlay(command_, overlay_, extent_, page);
     }
@@ -422,16 +420,16 @@ void Renderer::record(std::uint32_t index, bool diagnostics, bool modeRequested,
                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
                          0, nullptr, 0, nullptr, 1, &barrier);
     check(vkEndCommandBuffer(command_), "Finish drawing");
+    return targets;
 }
 
-bool Renderer::draw(bool diagnostics, bool modeRequested, bool focused,
-                    platform::OutputColor outputColor, std::string_view notice,
-                      std::span<const std::string_view> licensePage)
+bool Renderer::draw(const Frame& frame, std::vector<ui::HitTarget>& targets)
 {
+    targets.clear();
     if (SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED) {
         return false;
     }
-    if (rebuild_ && !buildSwapchain(modeRequested && focused)) {
+    if (rebuild_ && !buildSwapchain(frame.exclusiveRequested && frame.focused)) {
         return false;
     }
     check(vkWaitForFences(device_, 1, &frameFence_, VK_TRUE, UINT64_MAX), "Wait for previous frame");
@@ -448,7 +446,7 @@ bool Renderer::draw(bool diagnostics, bool modeRequested, bool focused,
     if (acquired != VK_SUBOPTIMAL_KHR) {
         check(acquired, "Acquire swapchain image");
     }
-    record(index, diagnostics, modeRequested, outputColor, notice, licensePage);
+    auto nextTargets = record(index, frame);
     check(vkResetFences(device_, 1, &frameFence_), "Reset frame fence");
     const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit{};
@@ -477,6 +475,7 @@ bool Renderer::draw(bool diagnostics, bool modeRequested, bool focused,
     if (result != VK_SUBOPTIMAL_KHR) {
         check(result, "Present frame");
     }
+    targets = std::move(nextTargets);
     // A working SUBOPTIMAL presentation may persist until the next display event.
     return true;
 }

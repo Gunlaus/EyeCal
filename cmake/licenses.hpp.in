@@ -9,5 +9,7 @@ SDL
 @sdl_license@
 volk
 @volk_license@
+JSON for Modern C++
+@json_license@
 )LICENSE";
 } // namespace calib::ui

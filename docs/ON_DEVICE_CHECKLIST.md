@@ -11,6 +11,22 @@ Every item below needs on-device checking. The build and CPU tests provide no vi
 - [ ] Use F2 and Page Up/Page Down to inspect the embedded notices. Check legibility from typical projector viewing distance.
 - [ ] Compare the grey field in borderless and exclusive modes with driver image enhancements, display scaling and overscan varied. Capture the presentation path or external output if quantifying changes. Confirm pixel mapping with the M3 sharpness grid when available.
 
+## M2 guide and ramp preview
+
+- [ ] Read the intro at normal viewing distance. Check the HDR and auto colour management instruction on a Windows display that exposes both settings.
+- [ ] Navigate with Left, Right and Enter. Choose answers with Up and Down, go back, and check that each screen retains its own answer. Open the Esc menu, resume, then exit.
+- [ ] Cycle text size with F3 at low and high resolutions. Check that controls remain readable and that the pattern and bad-example thumbnail sit outside every text panel, including with F1 visible.
+- [ ] On the ramp preview, check Off, Ordered, Blue noise and TPDF. Confirm the thumbnail stays coarse, the main ramp has black and white endpoints, and the dither pattern is stable across redraws.
+- [ ] Compare the GPU ramp with the CPU reference using a capture that preserves swapchain code values. Check F1 and F11 independently of the guide, including exclusive-mode loss and recovery.
+
+## Mouse and keyboard controls
+
+- [ ] Click Back, Next, Menu, and each answer on the intro and ramp preview. Confirm edge buttons stay disabled where appropriate, and that a press dragged outside the original button does not trigger it.
+- [ ] Hover, press and release each button. Check Tab and Shift+Tab focus, Enter activation, number-key choices, and the original arrows and shortcuts. Confirm wheel down/up advances/goes back and right-click goes back.
+- [ ] Confirm the cursor starts hidden over the guide, appears on movement, and hides after two idle seconds. Leave the menu open beyond two seconds and check that the cursor stays visible. Repeat on the summary screen when it is implemented.
+- [ ] Repeat at multiple F3 sizes and Windows DPI settings, in both fullscreen modes and after Alt-Tab or monitor changes. Confirm the hit areas match the visible buttons, and that controls never cover either ramp.
+- [ ] Try a physical wheel and a touchpad, including natural scrolling. Confirm the cursor returns normally when leaving the app.
+
 ## Future calibration screens
 
 | Screen | What to confirm on real hardware once implemented |
@@ -23,7 +39,7 @@ Every item below needs on-device checking. The build and CPU tests provide no vi
 | 5. Sharpness | Verify the 1px lines and border markers. Compare native and scaled modes, overscan off and on, and low and high edge enhancement. |
 | 6a. Baseline ramp | Compare the no-dither ramp on a known 8-bit output and confirm its appearance stays stable. |
 | 6b. Dither comparison | Move the divider and compare each dither algorithm against the same unchanged ramp. |
-| 6c. Bit-depth probe | Switch between 8- and 10-bit swapchains on capable hardware. Test unsupported hardware, then compare against known signal-chain settings. |
+| 6c. Bit-depth probe | Switch between 8- and 10-bit swapchains on capable hardware. Test unsupported hardware and the borderless inconclusive result. Verify the exclusive-only rule before comparing against known signal-chain settings. |
 | 6d. Dark ramp | Compare near-black and mid-grey gradients with dark processing controls varied. Check the moving ramp for temporal artifacts. |
 | 7. Uniformity | Cycle every flat field and verify fullscreen coverage. Check for clouding, dirty-screen effect, vignetting and pixel defects. |
 | 8. Summary | Compare answers and statuses to the entered results. Inspect the synthetic shadow and highlight details and open the exported plain-text report. |

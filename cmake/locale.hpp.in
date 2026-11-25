@@ -1,0 +1,7 @@
+#pragma once
+
+#include <string_view>
+
+namespace calib::guide {
+inline constexpr std::string_view englishJson = R"EYECAL_JSON(@english_json@)EYECAL_JSON";
+} // namespace calib::guide

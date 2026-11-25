@@ -1,0 +1,49 @@
+{
+  "controls": {
+    "navigation": "Wheel or Left / Right: Back / Next   Right-click: Back",
+    "back": "Back",
+    "next": "Next",
+    "menu": "Menu",
+    "answer": "Choose by click, Up / Down, or number.",
+    "preview": "D Change dither   F3 Text size   F1 Diagnostics",
+    "intro": "F3 Text size   F1 Diagnostics",
+    "dither_label": "Dither",
+    "dither_modes": ["Off", "Ordered", "Blue noise", "TPDF"],
+    "text_overflow": "Text too large here. Press F3.",
+    "menu_title": "EyeCal menu",
+    "menu_help": "Click or Up / Down   Enter Confirm   Esc Resume",
+    "resume": "Resume",
+    "exit": "Exit EyeCal"
+  },
+  "screens": [
+    {
+      "id": "intro",
+      "headline": "Set up your display for SDR",
+      "instructions": [
+        "Turn off HDR and auto colour management in Windows display settings.",
+        "Set the display to its recommended resolution. Dim the room and sit where you normally watch.",
+        "Use a neutral picture mode and turn off dynamic contrast, motion smoothing, and edge enhancement.",
+        "EyeCal checks display settings by eye. A meter is needed to measure colour accuracy."
+      ],
+      "should_see": "You should see a neutral picture whose brightness stays steady.",
+      "bad_example": "A bad starting point: the picture changes brightness or colour on its own.",
+      "question": "Ready to try the rendering preview?",
+      "answers": ["Ready", "Still setting up"],
+      "pattern": "none",
+      "pattern_label": ""
+    },
+    {
+      "id": "preview",
+      "headline": "Look for steps in the grey ramp",
+      "instructions": [
+        "This preview is for checking the renderer. A meter is needed to measure colour accuracy."
+      ],
+      "should_see": "You should see grey brighten smoothly from black to white.",
+      "bad_example": "Bad example: eight broad stripes.",
+      "question": "Does the main ramp look smooth?",
+      "answers": ["Mostly smooth", "Visible steps", "Unsure"],
+      "pattern": "ramp",
+      "pattern_label": "Grey ramp"
+    }
+  ]
+}
